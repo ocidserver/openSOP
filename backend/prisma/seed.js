@@ -7,151 +7,60 @@ async function main() {
   console.log('🌱 Starting database seeding...');
 
   // Create Departments
-  console.log('Creating departments...');
-  const departments = await Promise.all([
-    prisma.department.create({
-      data: {
-        code: 'IPDS',
-        name: 'Integrasi Pengolahan dan Diseminasi Statistik',
-        description: 'Divisi IPDS BPS'
-      }
-    }),
-    prisma.department.create({
-      data: {
-        code: 'SOSIAL',
-        name: 'Statistik Sosial',
-        description: 'Divisi Statistik Sosial'
-      }
-    }),
-    prisma.department.create({
-      data: {
-        code: 'PRODUKSI',
-        name: 'Statistik Produksi',
-        description: 'Divisi Statistik Produksi'
-      }
-    }),
-    prisma.department.create({
-      data: {
-        code: 'DISTRIBUSI',
-        name: 'Statistik Distribusi',
-        description: 'Divisi Statistik Distribusi dan Jasa'
-      }
-    }),
-    prisma.department.create({
-      data: {
-        code: 'NERWILIS',
-        name: 'Neraca Wilayah dan Analisis Statistik',
-        description: 'Divisi Neraca Wilayah dan Analisis Statistik'
-      }
-    })
-  ]);
+  console.log('Creating departments (upsert to avoid duplicates)...');
+  const departmentSeed = [
+    { code: 'IPDS', name: 'Integrasi Pengolahan dan Diseminasi Statistik', description: 'Divisi IPDS BPS' },
+    { code: 'SOSIAL', name: 'Statistik Sosial', description: 'Divisi Statistik Sosial' },
+    { code: 'PRODUKSI', name: 'Statistik Produksi', description: 'Divisi Statistik Produksi' },
+    { code: 'DISTRIBUSI', name: 'Statistik Distribusi', description: 'Divisi Statistik Distribusi dan Jasa' },
+    { code: 'NERWILIS', name: 'Neraca Wilayah dan Analisis Statistik', description: 'Divisi Neraca Wilayah dan Analisis Statistik' }
+  ];
 
-  console.log(`✅ Created ${departments.length} departments`);
+  const departments = [];
+  for (const d of departmentSeed) {
+    const dept = await prisma.department.upsert({
+      where: { code: d.code },
+      update: {},
+      create: d
+    });
+    departments.push(dept);
+  }
+
+  console.log(`✅ Ensured ${departments.length} departments`);
 
   // Create Categories
-  console.log('Creating categories...');
-  const categories = await Promise.all([
-    // Process Type Categories
-    prisma.category.create({
-      data: {
-        type: 'PROCESS_TYPE',
-        code: 'PROC_OPERATIONAL',
-        name: 'Prosedur Operasional',
-        description: 'SOP untuk kegiatan operasional harian',
-        color: '#2196F3',
-        icon: 'mdi-cog',
-        order: 1
-      }
-    }),
-    prisma.category.create({
-      data: {
-        type: 'PROCESS_TYPE',
-        code: 'PROC_STRATEGIC',
-        name: 'Prosedur Strategis',
-        description: 'SOP untuk kegiatan strategis organisasi',
-        color: '#9C27B0',
-        icon: 'mdi-strategy',
-        order: 2
-      }
-    }),
-    prisma.category.create({
-      data: {
-        type: 'PROCESS_TYPE',
-        code: 'PROC_SUPPORT',
-        name: 'Prosedur Pendukung',
-        description: 'SOP untuk kegiatan pendukung',
-        color: '#4CAF50',
-        icon: 'mdi-lifebuoy',
-        order: 3
-      }
-    }),
-    // Survey Type Categories
-    prisma.category.create({
-      data: {
-        type: 'SURVEY_TYPE',
-        code: 'SURVEY_SENSUS',
-        name: 'Sensus',
-        description: 'SOP untuk kegiatan sensus',
-        color: '#FF5722',
-        icon: 'mdi-counter',
-        order: 1
-      }
-    }),
-    prisma.category.create({
-      data: {
-        type: 'SURVEY_TYPE',
-        code: 'SURVEY_KHUSUS',
-        name: 'Survei Khusus',
-        description: 'SOP untuk survei khusus',
-        color: '#FF9800',
-        icon: 'mdi-clipboard-text',
-        order: 2
-      }
-    }),
-    // Complexity Categories
-    prisma.category.create({
-      data: {
-        type: 'COMPLEXITY',
-        code: 'COMPLEXITY_SIMPLE',
-        name: 'Sederhana',
-        description: 'SOP dengan tingkat kesulitan sederhana',
-        color: '#4CAF50',
-        icon: 'mdi-numeric-1-circle',
-        order: 1
-      }
-    }),
-    prisma.category.create({
-      data: {
-        type: 'COMPLEXITY',
-        code: 'COMPLEXITY_MODERATE',
-        name: 'Menengah',
-        description: 'SOP dengan tingkat kesulitan menengah',
-        color: '#FFC107',
-        icon: 'mdi-numeric-2-circle',
-        order: 2
-      }
-    }),
-    prisma.category.create({
-      data: {
-        type: 'COMPLEXITY',
-        code: 'COMPLEXITY_COMPLEX',
-        name: 'Kompleks',
-        description: 'SOP dengan tingkat kesulitan tinggi',
-        color: '#F44336',
-        icon: 'mdi-numeric-3-circle',
-        order: 3
-      }
-    })
-  ]);
+  console.log('Creating categories (upsert to avoid duplicates)...');
+  const categorySeed = [
+    { type: 'PROCESS_TYPE', code: 'PROC_OPERATIONAL', name: 'Prosedur Operasional', description: 'SOP untuk kegiatan operasional harian', color: '#2196F3', icon: 'mdi-cog', order: 1 },
+    { type: 'PROCESS_TYPE', code: 'PROC_STRATEGIC', name: 'Prosedur Strategis', description: 'SOP untuk kegiatan strategis organisasi', color: '#9C27B0', icon: 'mdi-strategy', order: 2 },
+    { type: 'PROCESS_TYPE', code: 'PROC_SUPPORT', code: 'PROC_SUPPORT', name: 'Prosedur Pendukung', description: 'SOP untuk kegiatan pendukung', color: '#4CAF50', icon: 'mdi-lifebuoy', order: 3 },
+    { type: 'SURVEY_TYPE', code: 'SURVEY_SENSUS', name: 'Sensus', description: 'SOP untuk kegiatan sensus', color: '#FF5722', icon: 'mdi-counter', order: 1 },
+    { type: 'SURVEY_TYPE', code: 'SURVEY_KHUSUS', name: 'Survei Khusus', description: 'SOP untuk survei khusus', color: '#FF9800', icon: 'mdi-clipboard-text', order: 2 },
+    { type: 'COMPLEXITY', code: 'COMPLEXITY_SIMPLE', name: 'Sederhana', description: 'SOP dengan tingkat kesulitan sederhana', color: '#4CAF50', icon: 'mdi-numeric-1-circle', order: 1 },
+    { type: 'COMPLEXITY', code: 'COMPLEXITY_MODERATE', name: 'Menengah', description: 'SOP dengan tingkat kesulitan menengah', color: '#FFC107', icon: 'mdi-numeric-2-circle', order: 2 },
+    { type: 'COMPLEXITY', code: 'COMPLEXITY_COMPLEX', name: 'Kompleks', description: 'SOP dengan tingkat kesulitan tinggi', color: '#F44336', icon: 'mdi-numeric-3-circle', order: 3 }
+  ];
 
-  console.log(`✅ Created ${categories.length} categories`);
+  const categories = [];
+  for (const c of categorySeed) {
+    const cat = await prisma.category.upsert({
+      where: { code: c.code },
+      update: {},
+      create: c
+    });
+    categories.push(cat);
+  }
+
+  console.log(`✅ Ensured ${categories.length} categories`);
 
   // Create Admin User
   console.log('Creating admin user...');
   const hashedPassword = await bcrypt.hash('admin123', 10);
   
-  const adminUser = await prisma.user.create({
-    data: {
+  const adminUser = await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
       username: 'admin',
       email: 'admin@bps.go.id',
       password: hashedPassword,
@@ -164,24 +73,26 @@ async function main() {
     }
   });
 
-  console.log(`✅ Created admin user: ${adminUser.email}`);
+  console.log(`✅ Ensured admin user: ${adminUser.email}`);
 
   // Create Manager User
-  const managerUser = await prisma.user.create({
-    data: {
+  const managerUser = await prisma.user.upsert({
+    where: { username: 'manager' },
+    update: {},
+    create: {
       username: 'manager',
       email: 'manager@bps.go.id',
       password: hashedPassword,
       fullName: 'Manager IPDS',
       nip: '199102022020122002',
-      role: 'MANAGER',
+      role: 'SUPERVISOR',
       status: 'ACTIVE',
       departmentId: departments[0].id,
       phoneNumber: '081234567891'
     }
   });
 
-  console.log(`✅ Created manager user: ${managerUser.email}`);
+  console.log(`✅ Ensured manager user: ${managerUser.email}`);
 
   // Create Sample SOP
   console.log('Creating sample SOP...');

@@ -147,6 +147,7 @@ const optionalAuth = async (req, res, next) => {
 
 module.exports = {
   authenticate,
+  authenticateToken: authenticate, // Alias for compatibility
   authorize,
   optionalAuth
 };

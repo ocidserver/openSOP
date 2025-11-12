@@ -16,8 +16,11 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  MANAGER
-  REVIEWER
+  SUPERVISOR
+  PIMPINAN_TINGGI_UTAMA
+  PIMPINAN_TINGGI_MADYA
+  PIMPINAN_TINGGI_PRATAMA
+  STAFF
   USER
 }
 
@@ -52,6 +55,8 @@ model User {
   auditLogs         AuditLog[]
   readReceipts      ReadReceipt[]
   comments          Comment[]
+  evaluations       SOPEvaluation[]     @relation("EvaluatorUser")
+  reports           Report[]
 
   @@map("users")
 }
@@ -75,8 +80,31 @@ model Department {
   // Relations
   users       User[]
   sopDocuments SOPDocument[]
+  actors      Actor[]
   
   @@map("departments")
+}
+
+// ============================================
+// ACTORS / PELAKSANA
+// ============================================
+
+model Actor {
+  id            String      @id @default(uuid())
+  code          String      @unique // e.g., ACT-001
+  name          String
+  position      String?     // Jabatan
+  description   String?     @db.Text
+  departmentId  String      @map("department_id")
+  department    Department  @relation(fields: [departmentId], references: [id])
+  email         String?
+  phone         String?
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  
+  @@index([departmentId])
+  @@map("actors")
 }
 
 // ============================================
@@ -119,9 +147,9 @@ model Category {
 
 enum SOPStatus {
   DRAFT           // Initial draft
-  IN_REVIEW       // Under review
-  IN_APPROVAL     // Waiting for approval
-  APPROVED        // Approved and active
+  REVIEW          // Under review (changed from IN_REVIEW)
+  APPROVED        // Approved (legacy)
+  ACTIVE          // Active and published
   REJECTED        // Rejected
   REVISION        // Need revision
   ARCHIVED        // Archived/Inactive
@@ -183,6 +211,7 @@ model SOPDocument {
   auditLogs           AuditLog[]
   readReceipts        ReadReceipt[]
   comments            Comment[]
+  evaluations         SOPEvaluation[]
   
   @@index([sopNumber])
   @@index([status])
@@ -420,4 +449,109 @@ model AuditLog {
   @@index([timestamp])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ============================================
+// SOP EVALUATIONS / PENILAIAN
+// ============================================
+
+enum RecommendationType {
+  SANGAT_BAIK
+  BAIK
+  CUKUP_BAIK
+  PERLU_PERBAIKAN
+  PERLU_PERBAIKAN_MENDESAK
+}
+
+model SOPEvaluation {
+  id                      String              @id @default(uuid())
+  sopId                   String              @map("sop_id")
+  sop                     SOPDocument         @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  evaluatorId             String              @map("evaluator_id")
+  evaluator               User                @relation("EvaluatorUser", fields: [evaluatorId], references: [id])
+  
+  // 5 Criteria Ratings (1-5 scale)
+  kelengkapanKonten       Int                 @map("kelengkapan_konten") // Completeness
+  kejelasanProsedur       Int                 @map("kejelasan_prosedur") // Clarity
+  kemudahanImplementasi   Int                 @map("kemudahan_implementasi") // Ease of implementation
+  relevansi               Int                 // Relevance
+  efektivitas             Int                 // Effectiveness
+  
+  // Overall Rating (auto-calculated average)
+  overallRating           Float               @map("overall_rating")
+  
+  // Comments and Recommendation
+  komentar                String?             @db.Text
+  rekomendasi             RecommendationType  @default(BAIK)
+  
+  // Metadata
+  evaluatedAt             DateTime            @default(now()) @map("evaluated_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  
+  @@index([sopId])
+  @@index([evaluatorId])
+  @@index([evaluatedAt])
+  @@map("sop_evaluations")
+}
+
+// ============================================
+// REPORTS
+// ============================================
+
+enum ReportType {
+  RINGKASAN_SOP           // SOP Summary
+  COMPLIANCE              // Compliance Report
+  WORKFLOW_APPROVAL       // Approval Workflow Analytics
+  AKTIVITAS_PENGGUNA      // User Activity
+  PENILAIAN_SOP          // Evaluation Summary
+  PERFORMA_DEPARTEMEN    // Department Performance
+  CUSTOM                 // Custom Report
+}
+
+enum ReportStatus {
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+}
+
+model Report {
+  id              String          @id @default(uuid())
+  type            ReportType
+  title           String
+  description     String?         @db.Text
+  
+  // Report Parameters (JSON)
+  parameters      String          @db.Text // JSON string of filters
+  
+  // Generated Files
+  format          ReportFormat
+  filePath        String?         @map("file_path")
+  fileUrl         String?         @map("file_url")
+  fileSize        BigInt?         @map("file_size")
+  
+  // Status
+  status          ReportStatus    @default(GENERATING)
+  errorMessage    String?         @db.Text @map("error_message")
+  
+  // Scheduling (optional)
+  isScheduled     Boolean         @default(false) @map("is_scheduled")
+  scheduleFrequency String?       @map("schedule_frequency") // daily, weekly, monthly
+  nextRunAt       DateTime?       @map("next_run_at")
+  
+  // Audit
+  createdById     String          @map("created_by_id")
+  createdBy       User            @relation(fields: [createdById], references: [id])
+  createdAt       DateTime        @default(now()) @map("created_at")
+  completedAt     DateTime?       @map("completed_at")
+  
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([status])
+  @@map("reports")
 }

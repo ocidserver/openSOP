@@ -19,6 +19,10 @@ const departmentRoutes = require('./routes/department.routes');
 const approvalRoutes = require('./routes/approval.routes');
 const auditRoutes = require('./routes/audit.routes');
 const reportRoutes = require('./routes/report.routes');
+const actorRoutes = require('./routes/actor.routes');
+const evaluationRoutes = require('./routes/evaluation.routes');
+const monitoringRoutes = require('./routes/monitoring.routes');
+const profileRoutes = require('./routes/profile.routes');
 
 const app = express();
 
@@ -85,7 +89,11 @@ app.get('/api', (req, res) => {
       departments: '/api/departments',
       approvals: '/api/approvals',
       audit: '/api/audit',
-      reports: '/api/reports'
+      reports: '/api/reports',
+      actors: '/api/actors',
+      evaluations: '/api/evaluations',
+      monitoring: '/api/monitoring',
+      profile: '/api/profile'
     }
   });
 });
@@ -98,6 +106,11 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/actors', actorRoutes);
+app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/reports', reportRoutes);
 
 // ===========================================
