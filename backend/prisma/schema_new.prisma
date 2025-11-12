@@ -1,0 +1,335 @@
+// Prisma Schema untuk Sistem Pengelolaan SOP AP (Administrasi Pemerintah)
+// Berdasarkan Peraturan Kepala BPS No. 19 Tahun 2013
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT & AUTHORIZATION
+// ============================================
+
+enum UserRole {
+  ADMIN                    // Administrator sistem
+  PIMPINAN_TINGGI_UTAMA   // Eselon I (berwenang mengesahkan SOP)
+  PIMPINAN_TINGGI_MADYA   // Eselon II (berwenang mengesahkan SOP)
+  PIMPINAN_TINGGI_PRATAMA // Eselon III (berwenang mengesahkan SOP)
+  SUPERVISOR               // Pengawas
+  USER                     // Pelaksana biasa
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id              String        @id @default(uuid())
+  username        String        @unique
+  email           String        @unique
+  password        String
+  fullName        String        @map("full_name")
+  nip             String?       @unique // Nomor Induk Pegawai
+  role            UserRole      @default(USER)
+  status          UserStatus    @default(ACTIVE)
+  unitKerjaId     String?       @map("unit_kerja_id")
+  unitKerja       UnitKerja?    @relation(fields: [unitKerjaId], references: [id])
+  jabatan         String?       // Jabatan/Posisi
+  kewenanganPengesahan String?  @map("kewenangan_pengesahan") // Untuk pimpinan yang berhak mengesahkan
+  profilePicture  String?       @map("profile_picture")
+  phoneNumber     String?       @map("phone_number")
+  lastLoginAt     DateTime?     @map("last_login_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  createdSOPs     SOP[]         @relation("CreatedBy")
+  updatedSOPs     SOP[]         @relation("UpdatedBy")
+  pengesahanSOPs  SOP[]         @relation("PengesahanBy")
+  monitoringEvaluasi SOPMonitoringEvaluasi[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+// ============================================
+// UNIT KERJA (ORGANIZATION UNIT)
+// ============================================
+
+model UnitKerja {
+  id          String      @id @default(uuid())
+  kode        String      @unique
+  nama        String
+  deskripsi   String?
+  parentId    String?     @map("parent_id")
+  parent      UnitKerja?  @relation("UnitKerjaHierarchy", fields: [parentId], references: [id])
+  children    UnitKerja[] @relation("UnitKerjaHierarchy")
+  logo        String?     // Path ke logo unit kerja
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  // Relations
+  users       User[]
+  sops        SOP[]
+  aktor       Aktor[]
+  
+  @@map("unit_kerja")
+}
+
+// ============================================
+// AKTOR (PELAKSANA/JABATAN)
+// ============================================
+
+model Aktor {
+  id              String      @id @default(uuid())
+  namaJabatan     String      @map("nama_jabatan") // Nama jabatan/peran
+  unitKerjaId     String      @map("unit_kerja_id")
+  unitKerja       UnitKerja   @relation(fields: [unitKerjaId], references: [id])
+  tipeKewenangan  String?     @map("tipe_kewenangan") // Misal: "Pimpinan Tinggi Pratama"
+  deskripsi       String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  
+  // Relations
+  aktivitas       AktivitasFlowchart[]
+  
+  @@unique([namaJabatan, unitKerjaId])
+  @@map("aktor")
+}
+
+// ============================================
+// SOP (INFORMASI IDENTITAS DOKUMEN)
+// ============================================
+
+enum JenisSOP {
+  TEKNIS          // SOP Teknis: sangat rinci, satu pelaksana
+  ADMINISTRATIF   // SOP Administratif: umum, lebih dari satu pelaksana
+}
+
+enum KlasifikasiCakupan {
+  MAKRO           // Mencakup beberapa SOP Mikro
+  MIKRO           // Bagian dari SOP Makro
+}
+
+enum KlasifikasiKelengkapan {
+  FINAL           // Menghasilkan produk utama paling akhir
+  PARSIAL         // Rangkaian kegiatan menuju produk akhir
+}
+
+enum KlasifikasiSifat {
+  GENERIK         // Kesamaan sifat terlepas lokasi/pelaksana
+  SPESIFIK        // Perbedaan relatif dari kegiatan/lokasi
+}
+
+enum StatusSOP {
+  DRAFT           // Masih draft
+  REVIEW          // Dalam proses review
+  APPROVED        // Sudah disetujui
+  ACTIVE          // Berlaku efektif
+  REVISION        // Dalam revisi
+  ARCHIVED        // Diarsipkan/tidak aktif
+}
+
+model SOP {
+  id                      String                    @id @default(uuid())
+  nomorSOP                String                    @unique @map("nomor_sop") // SOP-036/17000/2025
+  judulSOP                String                    @map("judul_sop")
+  unitKerjaId             String                    @map("unit_kerja_id")
+  unitKerja               UnitKerja                 @relation(fields: [unitKerjaId], references: [id])
+  
+  // Tanggal
+  tanggalPembuatan        DateTime                  @map("tanggal_pembuatan")
+  tanggalRevisi           DateTime?                 @map("tanggal_revisi")
+  tanggalEfektif          DateTime                  @map("tanggal_efektif")
+  
+  // Pengesahan
+  pengesahanOleh          String                    @map("pengesahan_oleh") // Nama pejabat
+  pengesahanUserId        String?                   @map("pengesahan_user_id")
+  pengesahanUser          User?                     @relation("PengesahanBy", fields: [pengesahanUserId], references: [id])
+  tanggalPengesahan       DateTime?                 @map("tanggal_pengesahan")
+  
+  // Dasar dan Tujuan
+  dasarHukum              String                    @map("dasar_hukum") @db.Text
+  maksudTujuan            String                    @map("maksud_tujuan") @db.Text
+  
+  // Klasifikasi SOP
+  jenisSOP                JenisSOP                  @map("jenis_sop")
+  klasifikasiCakupan      KlasifikasiCakupan?       @map("klasifikasi_cakupan")
+  klasifikasiKelengkapan  KlasifikasiKelengkapan?   @map("klasifikasi_kelengkapan")
+  klasifikasiSifat        KlasifikasiSifat?         @map("klasifikasi_sifat")
+  
+  // Informasi Teknis
+  peringatan              String?                   @db.Text
+  kualifikasiPelaksana    String                    @map("kualifikasi_pelaksana") @db.Text
+  peralatanPerlengkapan   String                    @map("peralatan_perlengkapan") @db.Text
+  catatanPendataan        String?                   @map("catatan_pendataan") @db.Text
+  
+  // File
+  fileSOPPath             String?                   @map("file_sop_path") // Path ke file PDF/Doc
+  
+  // Status
+  status                  StatusSOP                 @default(DRAFT)
+  
+  // Metadata
+  createdById             String                    @map("created_by_id")
+  createdBy               User                      @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedById             String?                   @map("updated_by_id")
+  updatedBy               User?                     @relation("UpdatedBy", fields: [updatedById], references: [id])
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  
+  // Relations
+  keterkaitan             SOPKeterkaitan[]          @relation("SOPUtama")
+  terkaitDengan           SOPKeterkaitan[]          @relation("SOPTerkait")
+  aktivitas               AktivitasFlowchart[]
+  monitoring              SOPMonitoringEvaluasi[]
+  
+  @@map("sop")
+}
+
+// ============================================
+// SOP KETERKAITAN (HUBUNGAN ANTAR-SOP)
+// ============================================
+
+enum TipeHubungan {
+  SOP_LANJUTAN
+  SOP_PRASYARAT
+  SOP_TERKAIT
+  BAGIAN_DARI_MAKRO
+}
+
+model SOPKeterkaitan {
+  id              String        @id @default(uuid())
+  sopUtamaId      String        @map("sop_utama_id")
+  sopUtama        SOP           @relation("SOPUtama", fields: [sopUtamaId], references: [id], onDelete: Cascade)
+  sopTerkaitId    String        @map("sop_terkait_id")
+  sopTerkait      SOP           @relation("SOPTerkait", fields: [sopTerkaitId], references: [id], onDelete: Cascade)
+  tipeHubungan    TipeHubungan  @map("tipe_hubungan")
+  keterangan      String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  
+  @@unique([sopUtamaId, sopTerkaitId])
+  @@map("sop_keterkaitan")
+}
+
+// ============================================
+// AKTIVITAS FLOWCHART (DETAIL PROSEDUR)
+// ============================================
+
+enum TipeSimbol {
+  KAPSUL          // Terminator (Start/End)
+  KOTAK           // Process
+  BELAH_KETUPAT   // Decision
+  ANAK_PANAH      // Flow line
+  SEGILIMA        // Off-page Connector
+}
+
+model AktivitasFlowchart {
+  id                  String        @id @default(uuid())
+  sopId               String        @map("sop_id")
+  sop                 SOP           @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  noKegiatan          Int           @map("no_kegiatan")
+  aktivitasKegiatan   String        @map("aktivitas_kegiatan") @db.Text
+  tipeSimbol          TipeSimbol    @map("tipe_simbol")
+  aktorId             String?       @map("aktor_id")
+  aktor               Aktor?        @relation(fields: [aktorId], references: [id])
+  keteranganFlow      String?       @map("keterangan_flow") @db.Text
+  kondisiKeputusan    String?       @map("kondisi_keputusan") @db.Text // Untuk Decision
+  nextActivityId      String?       @map("next_activity_id") // Link ke aktivitas berikutnya
+  nextActivityYes     String?       @map("next_activity_yes") // Jika Decision: Ya
+  nextActivityNo      String?       @map("next_activity_no") // Jika Decision: Tidak
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  mutuBaku            MutuBaku?
+  
+  @@unique([sopId, noKegiatan])
+  @@map("aktivitas_flowchart")
+}
+
+// ============================================
+// MUTU BAKU (STANDAR KUALITAS)
+// ============================================
+
+model MutuBaku {
+  id                      String              @id @default(uuid())
+  aktivitasId             String              @unique @map("aktivitas_id")
+  aktivitas               AktivitasFlowchart  @relation(fields: [aktivitasId], references: [id], onDelete: Cascade)
+  persyaratanKelengkapan  String              @map("persyaratan_kelengkapan") @db.Text
+  waktu                   String              // "1 minggu", "3 hari kerja"
+  output                  String              @db.Text
+  keterangan              String?             @db.Text
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  
+  @@map("mutu_baku")
+}
+
+// ============================================
+// SOP MONITORING & EVALUASI
+// ============================================
+
+enum StatusPenerapan {
+  BERJALAN_DENGAN_BAIK
+  BERJALAN_KURANG_BAIK
+  TIDAK_BERJALAN
+}
+
+model SOPMonitoringEvaluasi {
+  id                      String            @id @default(uuid())
+  sopId                   String            @map("sop_id")
+  sop                     SOP               @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  tanggalPenilaian        DateTime          @map("tanggal_penilaian")
+  penilaiId               String            @map("penilai_id")
+  penilai                 User              @relation(fields: [penilaiId], references: [id])
+  jenisKegiatan           String            @map("jenis_kegiatan") // "Monitoring" atau "Evaluasi"
+  penilaianPenerapan      StatusPenerapan   @map("penilaian_penerapan")
+  catatanHasilPenilaian   String?           @map("catatan_hasil_penilaian") @db.Text
+  tindakanYangDiambil     String?           @map("tindakan_yang_diambil") @db.Text
+  nilaiEvaluasi           Float?            @map("nilai_evaluasi") // Nilai kuantitatif
+  rencanaRevisi           Boolean           @default(false) @map("rencana_revisi")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+  
+  @@map("sop_monitoring_evaluasi")
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  ACTIVATE
+  ARCHIVE
+  VIEW
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id])
+  action      AuditAction
+  entityType  String      @map("entity_type") // "SOP", "Aktivitas", dll
+  entityId    String      @map("entity_id")
+  description String      @db.Text
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

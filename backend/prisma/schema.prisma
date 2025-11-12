@@ -1,0 +1,423 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  REVIEWER
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id                String              @id @default(uuid())
+  username          String              @unique
+  email             String              @unique
+  password          String
+  fullName          String              @map("full_name")
+  nip               String?             @unique // Nomor Induk Pegawai
+  role              UserRole            @default(USER)
+  status            UserStatus          @default(ACTIVE)
+  departmentId      String?             @map("department_id")
+  department        Department?         @relation(fields: [departmentId], references: [id])
+  profilePicture    String?             @map("profile_picture")
+  phoneNumber       String?             @map("phone_number")
+  lastLoginAt       DateTime?           @map("last_login_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  
+  // Relations
+  createdSOPs       SOPDocument[]       @relation("CreatedBy")
+  updatedSOPs       SOPDocument[]       @relation("UpdatedBy")
+  sopVersions       SOPVersion[]        @relation("VersionCreatedBy")
+  approvalActions   ApprovalAction[]
+  auditLogs         AuditLog[]
+  readReceipts      ReadReceipt[]
+  comments          Comment[]
+
+  @@map("users")
+}
+
+// ============================================
+// DEPARTMENT & ORGANIZATION
+// ============================================
+
+model Department {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  description String?
+  parentId    String?       @map("parent_id")
+  parent      Department?   @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[]  @relation("DepartmentHierarchy")
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  users       User[]
+  sopDocuments SOPDocument[]
+  
+  @@map("departments")
+}
+
+// ============================================
+// SOP CATEGORIES
+// ============================================
+
+enum CategoryType {
+  DEPARTMENT      // By Department/Unit Kerja
+  PROCESS_TYPE    // By Process Type (Operational, Strategic, Support)
+  SURVEY_TYPE     // By Survey Type (Sensus, Survei Khusus, dll)
+  COMPLEXITY      // By Complexity Level
+  CUSTOM          // Custom Category
+}
+
+model Category {
+  id          String        @id @default(uuid())
+  type        CategoryType
+  code        String        @unique
+  name        String
+  description String?
+  color       String?       // For UI visualization
+  icon        String?       // Icon identifier
+  parentId    String?       @map("parent_id")
+  parent      Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[]    @relation("CategoryHierarchy")
+  isActive    Boolean       @default(true) @map("is_active")
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  sopCategories SOPCategory[]
+  
+  @@map("categories")
+}
+
+// ============================================
+// SOP DOCUMENTS
+// ============================================
+
+enum SOPStatus {
+  DRAFT           // Initial draft
+  IN_REVIEW       // Under review
+  IN_APPROVAL     // Waiting for approval
+  APPROVED        // Approved and active
+  REJECTED        // Rejected
+  REVISION        // Need revision
+  ARCHIVED        // Archived/Inactive
+  OBSOLETE        // No longer valid
+}
+
+enum SOPComplexity {
+  SIMPLE
+  MODERATE
+  COMPLEX
+}
+
+model SOPDocument {
+  id                  String            @id @default(uuid())
+  sopNumber           String            @unique @map("sop_number") // e.g., SOP/BPS/2025/001
+  title               String
+  description         String?           @db.Text
+  purpose             String?           @db.Text // Tujuan SOP
+  scope               String?           @db.Text // Ruang Lingkup
+  status              SOPStatus         @default(DRAFT)
+  complexity          SOPComplexity     @default(MODERATE)
+  
+  // Ownership & Organization
+  departmentId        String            @map("department_id")
+  department          Department        @relation(fields: [departmentId], references: [id])
+  
+  // Version Control
+  currentVersionId    String?           @unique @map("current_version_id")
+  currentVersion      SOPVersion?       @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions            SOPVersion[]      @relation("SOPVersions")
+  versionNumber       Int               @default(1) @map("version_number")
+  
+  // Dates
+  effectiveDate       DateTime?         @map("effective_date")
+  reviewDate          DateTime?         @map("review_date") // Next review date
+  expiryDate          DateTime?         @map("expiry_date")
+  
+  // Metadata
+  tags                String[]          @default([])
+  keywords            String[]          @default([])
+  references          String[]          @default([]) // Reference to other SOPs or regulations
+  
+  // Tracking
+  viewCount           Int               @default(0) @map("view_count")
+  downloadCount       Int               @default(0) @map("download_count")
+  
+  // Audit
+  createdById         String            @map("created_by_id")
+  createdBy           User              @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedById         String?           @map("updated_by_id")
+  updatedBy           User?             @relation("UpdatedBy", fields: [updatedById], references: [id])
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  
+  // Relations
+  categories          SOPCategory[]
+  attachments         Attachment[]
+  approvalWorkflows   ApprovalWorkflow[]
+  auditLogs           AuditLog[]
+  readReceipts        ReadReceipt[]
+  comments            Comment[]
+  
+  @@index([sopNumber])
+  @@index([status])
+  @@index([departmentId])
+  @@map("sop_documents")
+}
+
+// ============================================
+// SOP VERSIONS
+// ============================================
+
+model SOPVersion {
+  id                String        @id @default(uuid())
+  sopId             String        @map("sop_id")
+  sop               SOPDocument   @relation("SOPVersions", fields: [sopId], references: [id], onDelete: Cascade)
+  versionNumber     Int           @map("version_number")
+  majorVersion      Int           @map("major_version")
+  minorVersion      Int           @map("minor_version")
+  
+  // Content
+  content           String?       @db.Text // JSON or Markdown content
+  bpmnXml           String?       @db.Text // BPMN diagram XML
+  changeLog         String?       @db.Text // What changed in this version
+  changeReason      String?       @db.Text // Why it changed
+  
+  // Files
+  documentPath      String?       @map("document_path") // Path to generated PDF/DOCX
+  documentUrl       String?       @map("document_url")
+  fileSize          BigInt?       @map("file_size")
+  fileHash          String?       @map("file_hash") // For integrity check
+  
+  // Metadata
+  publishedAt       DateTime?     @map("published_at")
+  isPublished       Boolean       @default(false) @map("is_published")
+  
+  // Audit
+  createdById       String        @map("created_by_id")
+  createdBy         User          @relation("VersionCreatedBy", fields: [createdById], references: [id])
+  createdAt         DateTime      @default(now()) @map("created_at")
+  
+  // Relation
+  currentForSOP     SOPDocument?  @relation("CurrentVersion")
+  
+  @@unique([sopId, versionNumber])
+  @@index([sopId])
+  @@map("sop_versions")
+}
+
+// ============================================
+// SOP CATEGORIZATION (Many-to-Many)
+// ============================================
+
+model SOPCategory {
+  id          String      @id @default(uuid())
+  sopId       String      @map("sop_id")
+  sop         SOPDocument @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  categoryId  String      @map("category_id")
+  category    Category    @relation(fields: [categoryId], references: [id])
+  assignedAt  DateTime    @default(now()) @map("assigned_at")
+  
+  @@unique([sopId, categoryId])
+  @@map("sop_categories")
+}
+
+// ============================================
+// ATTACHMENTS
+// ============================================
+
+enum AttachmentType {
+  DOCUMENT    // Supporting documents
+  IMAGE       // Images, diagrams
+  FLOWCHART   // Process flowcharts
+  FORM        // Forms, templates
+  OTHER
+}
+
+model Attachment {
+  id            String          @id @default(uuid())
+  sopId         String          @map("sop_id")
+  sop           SOPDocument     @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  type          AttachmentType  @default(DOCUMENT)
+  fileName      String          @map("file_name")
+  originalName  String          @map("original_name")
+  filePath      String          @map("file_path")
+  fileSize      BigInt          @map("file_size")
+  mimeType      String          @map("mime_type")
+  description   String?
+  uploadedAt    DateTime        @default(now()) @map("uploaded_at")
+  
+  @@index([sopId])
+  @@map("attachments")
+}
+
+// ============================================
+// APPROVAL WORKFLOW
+// ============================================
+
+enum WorkflowStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model ApprovalWorkflow {
+  id            String            @id @default(uuid())
+  sopId         String            @map("sop_id")
+  sop           SOPDocument       @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  workflowName  String            @map("workflow_name")
+  status        WorkflowStatus    @default(PENDING)
+  currentStep   Int               @default(1) @map("current_step")
+  totalSteps    Int               @map("total_steps")
+  startedAt     DateTime          @default(now()) @map("started_at")
+  completedAt   DateTime?         @map("completed_at")
+  
+  // Relations
+  actions       ApprovalAction[]
+  
+  @@index([sopId])
+  @@index([status])
+  @@map("approval_workflows")
+}
+
+enum ActionType {
+  SUBMIT      // Submit for review
+  REVIEW      // Review action
+  APPROVE     // Approve
+  REJECT      // Reject
+  REQUEST_REVISION // Request changes
+  COMMENT     // Add comment
+}
+
+enum ActionStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+model ApprovalAction {
+  id          String            @id @default(uuid())
+  workflowId  String            @map("workflow_id")
+  workflow    ApprovalWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  stepNumber  Int               @map("step_number")
+  actionType  ActionType        @map("action_type")
+  status      ActionStatus      @default(PENDING)
+  actorId     String            @map("actor_id")
+  actor       User              @relation(fields: [actorId], references: [id])
+  comments    String?           @db.Text
+  actionDate  DateTime?         @map("action_date")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  
+  @@index([workflowId])
+  @@index([actorId])
+  @@map("approval_actions")
+}
+
+// ============================================
+// COMPLIANCE TRACKING
+// ============================================
+
+model ReadReceipt {
+  id          String      @id @default(uuid())
+  sopId       String      @map("sop_id")
+  sop         SOPDocument @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id])
+  readAt      DateTime    @default(now()) @map("read_at")
+  duration    Int?        // Reading duration in seconds
+  acknowledged Boolean    @default(false) // User acknowledged understanding
+  
+  @@unique([sopId, userId])
+  @@index([sopId])
+  @@index([userId])
+  @@map("read_receipts")
+}
+
+// ============================================
+// COMMENTS & FEEDBACK
+// ============================================
+
+model Comment {
+  id          String      @id @default(uuid())
+  sopId       String      @map("sop_id")
+  sop         SOPDocument @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id])
+  parentId    String?     @map("parent_id")
+  parent      Comment?    @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[]   @relation("CommentReplies")
+  content     String      @db.Text
+  isResolved  Boolean     @default(false) @map("is_resolved")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  @@index([sopId])
+  @@index([userId])
+  @@map("comments")
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  PUBLISH
+  ARCHIVE
+  DOWNLOAD
+  EXPORT
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  action      AuditAction
+  entityType  String      @map("entity_type") // e.g., "SOPDocument", "User"
+  entityId    String      @map("entity_id")
+  sopId       String?     @map("sop_id")
+  sop         SOPDocument? @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id])
+  description String      @db.Text
+  changes     String?     @db.Text // JSON string of before/after values
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  timestamp   DateTime    @default(now())
+  
+  @@index([sopId])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([action])
+  @@map("audit_logs")
+}

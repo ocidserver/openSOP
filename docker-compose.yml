@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: sop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sop_user
+      POSTGRES_PASSWORD: sop_password_2025
+      POSTGRES_DB: sop_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - sop-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U sop_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (Node.js + Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sop-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://sop_user:sop_password_2025@postgres:5432/sop_db
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_EXPIRES_IN: 7d
+      MAX_FILE_SIZE: 52428800
+      UPLOAD_PATH: /app/uploads
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sop-network
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+  # Frontend (Vue.js 3)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sop-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://localhost/api
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - sop-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: sop-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - sop-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  sop-network:
+    driver: bridge

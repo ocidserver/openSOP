@@ -1,0 +1,30 @@
+{
+  "name": "sop-ms-frontend",
+  "version": "2.0.0",
+  "description": "SOP Management System",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@primevue/themes": "^4.4.1",
+    "axios": "^1.6.7",
+    "bpmn-js": "^18.8.0",
+    "bpmn-js-properties-panel": "^5.42.3",
+    "chart.js": "^4.5.1",
+    "date-fns": "^4.1.0",
+    "pinia": "^2.1.7",
+    "primeflex": "^4.0.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.4.1",
+    "sass": "^1.94.0",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.2.2"
+  }
+}
