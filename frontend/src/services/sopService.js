@@ -102,6 +102,27 @@ export default {
     return api.delete(`/users/${id}`)
   },
 
+  // Actors
+  getActors(params) {
+    return api.get('/actors', { params })
+  },
+  
+  getActorById(id) {
+    return api.get(`/actors/${id}`)
+  },
+  
+  createActor(data) {
+    return api.post('/actors', data)
+  },
+  
+  updateActor(id, data) {
+    return api.put(`/actors/${id}`, data)
+  },
+  
+  deleteActor(id) {
+    return api.delete(`/actors/${id}`)
+  },
+
   // Approvals
   getSOPWorkflows(sopId) {
     return api.get(`/approvals/sop/${sopId}`)

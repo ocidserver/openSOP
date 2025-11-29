@@ -157,7 +157,7 @@ exports.getActorById = async (req, res) => {
 exports.createActor = async (req, res) => {
   try {
     const {
-      code,
+      code: providedCode,
       name,
       position,
       description,
@@ -168,14 +168,23 @@ exports.createActor = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!code || !name || !departmentId) {
+    if (!name) {
       return res.status(400).json({
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Kode, nama, dan departemen harus diisi'
+          message: 'Nama aktor harus diisi'
         }
       });
+    }
+
+    // Generate code if not provided
+    let code = providedCode;
+    if (!code) {
+      // Generate code from name (uppercase, remove spaces, add timestamp)
+      const namePrefix = name.toUpperCase().replace(/\s+/g, '').substring(0, 5);
+      const timestamp = Date.now().toString().slice(-4);
+      code = `ACT-${namePrefix}-${timestamp}`;
     }
 
     // Check if code already exists
@@ -184,28 +193,37 @@ exports.createActor = async (req, res) => {
     });
 
     if (existing) {
-      return res.status(409).json({
-        success: false,
-        error: {
-          code: 'DUPLICATE_CODE',
-          message: `Kode aktor ${code} sudah digunakan`
-        }
-      });
+      // If auto-generated code exists, add random suffix
+      if (!providedCode) {
+        const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        code = `${code}-${randomSuffix}`;
+      } else {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'DUPLICATE_CODE',
+            message: `Kode aktor ${code} sudah digunakan`
+          }
+        });
+      }
     }
 
-    // Check if department exists
-    const department = await prisma.department.findUnique({
-      where: { id: departmentId }
-    });
-
-    if (!department) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'DEPARTMENT_NOT_FOUND',
-          message: 'Departemen tidak ditemukan'
-        }
+    // Check if department exists (optional)
+    let department = null;
+    if (departmentId) {
+      department = await prisma.department.findUnique({
+        where: { id: departmentId }
       });
+
+      if (!department) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'DEPARTMENT_NOT_FOUND',
+            message: 'Departemen tidak ditemukan'
+          }
+        });
+      }
     }
 
     // Create actor
@@ -218,7 +236,8 @@ exports.createActor = async (req, res) => {
         departmentId,
         email,
         phone,
-        isActive
+        isActive,
+        createdById: req.user?.id || null
       },
       include: {
         department: {

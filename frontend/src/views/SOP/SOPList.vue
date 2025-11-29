@@ -1,7 +1,14 @@
 <template>
   <div class="sop-list">
+    <Toast />
+    
     <div class="page-header">
-      <h1 class="page-title">Daftar SOP</h1>
+      <div>
+        <h1 class="page-title">Daftar SOP</h1>
+        <p class="page-subtitle" v-if="totalRecords > 0">
+          Total: {{ totalRecords }} SOP
+        </p>
+      </div>
       <Button 
         label="Buat SOP Baru" 
         icon="pi pi-plus" 
@@ -26,7 +33,7 @@
               </div>
             </div>
             <div class="col-12 md:col-3">
-              <Dropdown 
+              <Select 
                 v-model="filters.category" 
                 :options="categories" 
                 optionLabel="name"
@@ -36,7 +43,7 @@
               />
             </div>
             <div class="col-12 md:col-3">
-              <Dropdown 
+              <Select 
                 v-model="filters.status" 
                 :options="statuses" 
                 optionLabel="label"
@@ -62,13 +69,24 @@
           :value="sops" 
           :loading="loading"
           :paginator="true" 
-          :rows="10"
-          :rowsPerPageOptions="[10, 20, 50]"
+          :rows="20"
+          :rowsPerPageOptions="[10, 20, 50, 100]"
+          :totalRecords="totalRecords"
           responsiveLayout="scroll"
           stripedRows
           class="mt-4"
+          :rowHover="true"
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Menampilkan {first} - {last} dari {totalRecords} SOP"
         >
-          <Column field="code" header="Kode SOP" :sortable="true">
+          <template #empty>
+            <div class="text-center py-4">
+              <i class="pi pi-inbox" style="font-size: 3rem; color: #9ca3af;"></i>
+              <p class="text-gray-600 mt-3">Tidak ada data SOP</p>
+            </div>
+          </template>
+          
+          <Column field="code" header="Nomor SOP" :sortable="true" style="min-width: 180px;">
             <template #body="slotProps">
               <router-link 
                 :to="`/sop/${slotProps.data.id}`"
@@ -78,10 +96,11 @@
               </router-link>
             </template>
           </Column>
-          <Column field="title" header="Judul" :sortable="true"></Column>
-          <Column field="category" header="Kategori" :sortable="true"></Column>
-          <Column field="version" header="Versi" :sortable="true"></Column>
-          <Column field="status" header="Status" :sortable="true">
+          <Column field="title" header="Judul" :sortable="true" style="min-width: 300px;"></Column>
+          <Column field="category" header="Kategori" :sortable="true" style="min-width: 150px;"></Column>
+          <Column field="department" header="Department" :sortable="true" style="min-width: 150px;"></Column>
+          <Column field="version" header="Versi" :sortable="true" style="min-width: 80px;"></Column>
+          <Column field="status" header="Status" :sortable="true" style="min-width: 120px;">
             <template #body="slotProps">
               <Tag 
                 :value="slotProps.data.status" 
@@ -89,12 +108,12 @@
               />
             </template>
           </Column>
-          <Column field="updatedAt" header="Terakhir Diubah" :sortable="true">
+          <Column field="updatedAt" header="Terakhir Diubah" :sortable="true" style="min-width: 140px;">
             <template #body="slotProps">
               {{ formatDate(slotProps.data.updatedAt) }}
             </template>
           </Column>
-          <Column header="Aksi">
+          <Column header="Aksi" style="min-width: 180px;">
             <template #body="slotProps">
               <Button 
                 icon="pi pi-eye" 
@@ -135,20 +154,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useToast } from 'primevue/usetoast';
 import { format } from 'date-fns';
+import sopService from '@/services/sopService';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
+import Toast from 'primevue/toast';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const toast = useToast();
 
 // Check if user is supervisor
 const isSupervisor = computed(() => {
@@ -165,38 +188,10 @@ const canDelete = computed(() => {
   return ['ADMIN'].includes(authStore.user?.role);
 });
 
-// Sample data
-const sops = ref([
-  {
-    id: 1,
-    code: 'SOP/BPS/2025/001',
-    title: 'Prosedur Pengolahan Data Sensus',
-    category: 'Pengolahan Data',
-    version: '1.0',
-    status: 'ACTIVE',
-    updatedAt: new Date('2025-01-15')
-  },
-  {
-    id: 2,
-    code: 'SOP/BPS/2025/002',
-    title: 'Prosedur Verifikasi dan Validasi Data',
-    category: 'Quality Control',
-    version: '2.1',
-    status: 'DRAFT',
-    updatedAt: new Date('2025-02-01')
-  },
-  {
-    id: 3,
-    code: 'SOP/BPS/2025/003',
-    title: 'Prosedur Publikasi Data Statistik',
-    category: 'Publikasi',
-    version: '1.3',
-    status: 'REVIEW',
-    updatedAt: new Date('2025-02-10')
-  }
-]);
-
+// Data from API
+const sops = ref([]);
 const loading = ref(false);
+const totalRecords = ref(0);
 
 const filters = ref({
   search: '',
@@ -204,35 +199,104 @@ const filters = ref({
   status: null
 });
 
-const categories = ref([
-  { name: 'Pengolahan Data' },
-  { name: 'Quality Control' },
-  { name: 'Publikasi' },
-  { name: 'Administrasi' }
-]);
+const categories = ref([]);
 
 const statuses = ref([
-  { label: 'Aktif', value: 'ACTIVE' },
   { label: 'Draft', value: 'DRAFT' },
   { label: 'Review', value: 'REVIEW' },
-  { label: 'Archived', value: 'ARCHIVED' }
+  { label: 'Approved', value: 'APPROVED' },
+  { label: 'Active', value: 'ACTIVE' },
+  { label: 'Rejected', value: 'REJECTED' },
+  { label: 'Revision', value: 'REVISION' },
+  { label: 'Archived', value: 'ARCHIVED' },
+  { label: 'Obsolete', value: 'OBSOLETE' }
 ]);
 
 const getStatusSeverity = (status) => {
   const severityMap = {
     'ACTIVE': 'success',
+    'APPROVED': 'success',
     'DRAFT': 'info',
     'REVIEW': 'warning',
-    'ARCHIVED': 'danger'
+    'REJECTED': 'danger',
+    'REVISION': 'warning',
+    'ARCHIVED': 'secondary',
+    'OBSOLETE': 'danger'
   };
   return severityMap[status] || 'info';
 };
 
 const formatDate = (date) => {
+  if (!date) return '-';
   return format(new Date(date), 'dd MMM yyyy');
 };
 
+// Load SOPs from API
+const loadSOPs = async () => {
+  try {
+    loading.value = true;
+    const params = {
+      page: 1,
+      limit: 100,
+      search: filters.value.search || undefined,
+      category: filters.value.category?.id || undefined,
+      status: filters.value.status || undefined
+    };
+
+    const response = await sopService.getSOPs(params);
+    
+    if (response.success) {
+      const sopData = response.data;
+      
+      // Map backend data to frontend format
+      sops.value = sopData.sops.map(sop => ({
+        id: sop.id,
+        code: sop.sopNumber,
+        title: sop.title,
+        category: sop.categories?.[0]?.category?.name || '-',
+        version: `${sop.versionNumber}.0`,
+        status: sop.status,
+        updatedAt: sop.updatedAt,
+        department: sop.department?.name || '-'
+      }));
+      
+      totalRecords.value = sopData.pagination?.total || sops.value.length;
+      
+      console.log('Loaded SOPs:', sops.value.length);
+    }
+  } catch (error) {
+    console.error('Error loading SOPs:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Gagal memuat data SOP',
+      life: 3000
+    });
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Load categories from API
+const loadCategories = async () => {
+  try {
+    const response = await sopService.getCategories();
+    if (response.success) {
+      categories.value = response.data.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        code: cat.code
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading categories:', error);
+  }
+};
+
 const createSOP = () => {
+  console.log('🔵 createSOP clicked - Attempting to navigate to /sop/create');
+  console.log('Current user:', authStore.user);
+  console.log('User role:', authStore.user?.role);
   router.push('/sop/create');
 };
 
@@ -249,21 +313,57 @@ const editSOP = (id) => {
   router.push(`/sop/${id}/edit`);
 };
 
-const deleteSOP = (id) => {
-  console.log('Delete SOP:', id);
-  // Implement delete functionality
+const deleteSOP = async (id) => {
+  if (!confirm('Apakah Anda yakin ingin menghapus SOP ini?')) {
+    return;
+  }
+  
+  try {
+    loading.value = true;
+    await sopService.deleteSOP(id);
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Berhasil',
+      detail: 'SOP berhasil dihapus',
+      life: 3000
+    });
+    
+    // Reload data
+    await loadSOPs();
+  } catch (error) {
+    console.error('Error deleting SOP:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.response?.data?.message || 'Gagal menghapus SOP',
+      life: 3000
+    });
+  } finally {
+    loading.value = false;
+  }
 };
 
 const applyFilters = () => {
-  loading.value = true;
-  // Implement filter logic
-  setTimeout(() => {
-    loading.value = false;
-  }, 500);
+  loadSOPs();
 };
 
-onMounted(() => {
-  // Load SOPs from API
+// Watch for filter changes
+watch([() => filters.value.search], () => {
+  // Debounce search
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
+  searchTimeout.value = setTimeout(() => {
+    loadSOPs();
+  }, 500);
+});
+
+const searchTimeout = ref(null);
+
+onMounted(async () => {
+  await loadCategories();
+  await loadSOPs();
 });
 </script>
 
@@ -285,6 +385,12 @@ onMounted(() => {
   font-size: 2rem;
   font-weight: 600;
   color: #2c3e50;
+  margin: 0 0 0.25rem 0;
+}
+
+.page-subtitle {
+  font-size: 0.95rem;
+  color: #6c757d;
   margin: 0;
 }
 

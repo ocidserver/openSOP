@@ -53,8 +53,8 @@
             <img src="@/assets/images/logo-opensop.png" alt="Logo BPS" />
           </div>
           <div class="sop-title-section">
-            <h1 class="sop-title">{{ sopData.judul }}</h1>
-            <div class="sop-number">{{ sopData.nomorSOP }}</div>
+            <h1 class="sop-title">{{ sopData?.judul || '-' }}</h1>
+            <div class="sop-number">{{ sopData?.nomorSOP || '-' }}</div>
           </div>
         </div>
       </template>
@@ -65,33 +65,33 @@
           <div class="metadata-column">
             <div class="metadata-item">
               <label>Tanggal Penetapan</label>
-              <div class="metadata-value">{{ formatDate(sopData.tanggalPenetapan) }}</div>
+              <div class="metadata-value">{{ sopData?.tanggalPenetapan ? formatDate(sopData.tanggalPenetapan) : '-' }}</div>
             </div>
             
             <div class="metadata-item">
               <label>Tanggal Berlaku</label>
-              <div class="metadata-value">{{ formatDate(sopData.tanggalBerlaku) }}</div>
+              <div class="metadata-value">{{ sopData?.tanggalBerlaku ? formatDate(sopData.tanggalBerlaku) : '-' }}</div>
             </div>
             
             <div class="metadata-item">
               <label>Tanggal Revisi</label>
-              <div class="metadata-value">{{ sopData.tanggalRevisi ? formatDate(sopData.tanggalRevisi) : 'N/A' }}</div>
+              <div class="metadata-value">{{ sopData?.tanggalRevisi ? formatDate(sopData.tanggalRevisi) : 'N/A' }}</div>
             </div>
             
             <div class="metadata-item">
               <label>Status</label>
-              <Tag :value="sopData.status" :severity="getStatusSeverity(sopData.status)" />
+              <Tag :value="sopData?.status || '-'" :severity="getStatusSeverity(sopData?.status)" />
             </div>
 
             <div class="metadata-item">
               <label>Jenis SOP</label>
-              <div class="metadata-value">{{ sopData.jenisSOP }}</div>
+              <div class="metadata-value">{{ sopData?.jenisSOP || '-' }}</div>
             </div>
 
             <div class="metadata-item">
               <label>Klasifikasi</label>
               <div class="metadata-value">
-                {{ sopData.klasifikasiCakupan }} - {{ sopData.klasifikasiKelengkapan }} - {{ sopData.klasifikasiSifat }}
+                {{ sopData?.klasifikasiCakupan || '-' }} - {{ sopData?.klasifikasiKelengkapan || '-' }} - {{ sopData?.klasifikasiSifat || '-' }}
               </div>
             </div>
           </div>
@@ -100,24 +100,24 @@
           <div class="metadata-column">
             <div class="metadata-item">
               <label>Unit Kerja</label>
-              <div class="metadata-value">{{ sopData.unitKerja }}</div>
+              <div class="metadata-value">{{ sopData?.unitKerja || '-' }}</div>
             </div>
 
             <div class="metadata-item">
               <label>Disahkan Oleh</label>
-              <div class="metadata-value">{{ sopData.pengesahanUser }}</div>
+              <div class="metadata-value">{{ sopData?.pengesahanUser || '-' }}</div>
             </div>
 
             <div class="metadata-item">
               <label>Tanggal Pengesahan</label>
-              <div class="metadata-value">{{ sopData.tanggalPengesahan ? formatDate(sopData.tanggalPengesahan) : 'Belum disahkan' }}</div>
+              <div class="metadata-value">{{ sopData?.tanggalPengesahan ? formatDate(sopData.tanggalPengesahan) : 'Belum disahkan' }}</div>
             </div>
 
-            <div class="metadata-item" v-if="sopData.keterkaitan && sopData.keterkaitan.length > 0">
+            <div class="metadata-item" v-if="sopData?.keterkaitan && sopData?.keterkaitan.length > 0">
               <label>SOP Terkait</label>
               <div class="related-sop">
                 <router-link 
-                  v-for="related in sopData.keterkaitan" 
+                  v-for="related in sopData?.keterkaitan || []" 
                   :key="related.id"
                   :to="`/sop/${related.sopTerkaitId}`"
                   class="related-link"
@@ -134,27 +134,27 @@
         <!-- Detail Information -->
         <Accordion :multiple="true" :activeIndex="[0, 1, 2]">
           <AccordionTab header="Dasar Hukum">
-            <div class="content-section" v-html="sopData.dasarHukum || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.dasarHukum || 'N/A'"></div>
           </AccordionTab>
 
           <AccordionTab header="Maksud dan Tujuan">
-            <div class="content-section" v-html="sopData.maksudTujuan || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.maksudTujuan || 'N/A'"></div>
           </AccordionTab>
 
           <AccordionTab header="Kualifikasi Pelaksana">
-            <div class="content-section" v-html="sopData.kualifikasiPelaksana || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.kualifikasiPelaksana || 'N/A'"></div>
           </AccordionTab>
 
           <AccordionTab header="Peralatan dan Perlengkapan">
-            <div class="content-section" v-html="sopData.peralatanPerlengkapan || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.peralatanPerlengkapan || 'N/A'"></div>
           </AccordionTab>
 
-          <AccordionTab header="Peringatan" v-if="sopData.peringatan">
-            <div class="content-section warning-box" v-html="sopData.peringatan"></div>
+          <AccordionTab header="Peringatan" v-if="sopData?.peringatan">
+            <div class="content-section warning-box" v-html="sopData?.peringatan"></div>
           </AccordionTab>
 
-          <AccordionTab header="Catatan Pendataan" v-if="sopData.catatanPendataan">
-            <div class="content-section" v-html="sopData.catatanPendataan"></div>
+          <AccordionTab header="Catatan Pendataan" v-if="sopData?.catatanPendataan">
+            <div class="content-section" v-html="sopData?.catatanPendataan"></div>
           </AccordionTab>
         </Accordion>
       </template>
@@ -402,7 +402,6 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
@@ -419,221 +418,34 @@ import BpmnViewer from '@/components/BpmnViewer.vue'
 import BpmnEditor from '@/components/BpmnEditor.vue'
 import SOPFlowchart from '@/components/SOPFlowchart.vue'
 
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import sopService from '@/services/sopService'
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
+const route = useRoute()
+const sopData = ref(null)
+const aktors = ref([])
+
+const flowchartData = ref([])
 const toast = useToast()
-
-// Check if in review mode
-const isReviewMode = computed(() => {
-  return route.query.mode === 'review'
-})
-
-// Mock Data - Replace with API call
-const sopData = ref({
-  id: 'SOP-036-17000-2025',
-  nomorSOP: 'SOP-036/17000/2025',
-  judul: 'Penyusunan Analisis Statistik Sektoral',
-  tanggalPenetapan: '2025-01-15',
-  tanggalBerlaku: '2025-02-01',
-  tanggalRevisi: null,
-  tanggalPengesahan: '2025-01-20',
-  status: 'ACTIVE',
-  jenisSOP: 'TEKNIS',
-  klasifikasiCakupan: 'MAKRO',
-  klasifikasiKelengkapan: 'FINAL',
-  klasifikasiSifat: 'GENERIK',
-  unitKerja: 'Direktorat Analisis dan Pengembangan Statistik',
-  pengesahanUser: 'Dr. Ahmad Subagyo, M.Si (Direktur)',
-  dasarHukum: `
-    <ol>
-      <li>UU No. 16 Tahun 1997 tentang Statistik</li>
-      <li>Peraturan Kepala BPS No. 19 Tahun 2013 tentang SOP AP</li>
-      <li>Peraturan Internal BPS tentang Diseminasi Data</li>
-    </ol>
-  `,
-  maksudTujuan: `
-    <p><strong>Maksud:</strong> Memberikan panduan standar dalam penyusunan analisis statistik sektoral.</p>
-    <p><strong>Tujuan:</strong></p>
-    <ul>
-      <li>Menjamin kualitas dan konsistensi analisis statistik</li>
-      <li>Meningkatkan efisiensi proses analisis</li>
-      <li>Memastikan koordinasi antar unit kerja</li>
-    </ul>
-  `,
-  kualifikasiPelaksana: `
-    <ul>
-      <li>Minimal S1 Statistika/Ekonomi/Sosial</li>
-      <li>Memiliki pemahaman metodologi penelitian</li>
-      <li>Menguasai tools analisis statistik (SPSS, R, Python)</li>
-      <li>Pengalaman minimal 2 tahun di bidang analisis data</li>
-    </ul>
-  `,
-  peralatanPerlengkapan: `
-    <ul>
-      <li>Komputer dengan software statistik</li>
-      <li>Akses database BPS</li>
-      <li>Template laporan analisis</li>
-      <li>Referensi metodologi statistik</li>
-    </ul>
-  `,
-  peringatan: `
-    <p><strong>⚠️ PERHATIAN:</strong></p>
-    <ul>
-      <li>Data yang digunakan harus sudah tervalidasi</li>
-      <li>Analisis harus objektif dan tidak bias</li>
-      <li>Jaga kerahasiaan data sensitif</li>
-    </ul>
-  `,
-  catatanPendataan: 'SOP ini merupakan revisi dari SOP-036/17000/2023',
-  keterkaitan: [
-    { id: 1, sopTerkaitId: 'SOP-037-17000-2025', nomorSOP: 'SOP-037/17000/2025', tipeHubungan: 'SOP_LANJUTAN' }
-  ]
-})
-
-// Mock Aktor Data
-const aktors = ref([
-  { id: 1, namaJabatan: 'Ketua Tim Metodologi dan Analisis Statistik' },
-  { id: 2, namaJabatan: 'Ketua Project Analisis Sektor' },
-  { id: 3, namaJabatan: 'Anggota' },
-  { id: 4, namaJabatan: 'Tim Diseminasi' }
-])
-
-// Mock Flowchart Data
-const flowchartData = ref([
-  {
-    id: 1,
-    noKegiatan: 1,
-    aktivitasKegiatan: 'Menerima permintaan analisis statistik sektoral',
-    tipeSimbol: 'KAPSUL',
-    aktorId: 1,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Surat permintaan resmi',
-      waktu: '1 hari',
-      output: 'Permintaan tercatat',
-      keterangan: 'Mulai proses'
-    }
-  },
-  {
-    id: 2,
-    noKegiatan: 2,
-    aktivitasKegiatan: 'Mengidentifikasi kebutuhan data dan metodologi',
-    tipeSimbol: 'KOTAK',
-    aktorId: 1,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Dokumen permintaan, database BPS',
-      waktu: '2 hari',
-      output: 'Rencana analisis',
-      keterangan: 'Koordinasi dengan pemohon'
-    }
-  },
-  {
-    id: 3,
-    noKegiatan: 3,
-    aktivitasKegiatan: 'Menyusun design analisis dan timeline',
-    tipeSimbol: 'KOTAK',
-    aktorId: 2,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Rencana analisis, template design',
-      waktu: '3 hari',
-      output: 'Design analisis',
-      keterangan: 'Review oleh Ketua Tim'
-    }
-  },
-  {
-    id: 4,
-    noKegiatan: 4,
-    aktivitasKegiatan: 'Apakah design analisis disetujui?',
-    tipeSimbol: 'BELAH_KETUPAT',
-    aktorId: 1,
-    nextActivityYes: 'Lanjut ke No. 5',
-    nextActivityNo: 'Kembali ke No. 3',
-    mutuBaku: {
-      persyaratanKelengkapan: 'Design analisis',
-      waktu: '1 hari',
-      output: 'Keputusan approval',
-      keterangan: 'Jika tidak disetujui, revisi design'
-    }
-  },
-  {
-    id: 5,
-    noKegiatan: 5,
-    aktivitasKegiatan: 'Melakukan ekstraksi dan processing data',
-    tipeSimbol: 'KOTAK',
-    aktorId: 3,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Akses database, tools statistik',
-      waktu: '5 hari',
-      output: 'Dataset analisis',
-      keterangan: 'Menggunakan R/Python/SPSS'
-    }
-  },
-  {
-    id: 6,
-    noKegiatan: 6,
-    aktivitasKegiatan: 'Melakukan analisis statistik',
-    tipeSimbol: 'KOTAK',
-    aktorId: 3,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Dataset, metodologi',
-      waktu: '1 minggu',
-      output: 'Hasil analisis',
-      keterangan: 'Sesuai dengan metodologi yang disetujui'
-    }
-  },
-  {
-    id: 7,
-    noKegiatan: 7,
-    aktivitasKegiatan: 'Menyusun laporan analisis',
-    tipeSimbol: 'KOTAK',
-    aktorId: 2,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Hasil analisis, template laporan',
-      waktu: '3 hari',
-      output: 'Draft laporan',
-      keterangan: 'Format sesuai template BPS'
-    }
-  },
-  {
-    id: 8,
-    noKegiatan: 8,
-    aktivitasKegiatan: 'Review dan finalisasi laporan',
-    tipeSimbol: 'KOTAK',
-    aktorId: 1,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Draft laporan',
-      waktu: '2 hari',
-      output: 'Laporan final',
-      keterangan: 'Quality check dan approval'
-    }
-  },
-  {
-    id: 9,
-    noKegiatan: 9,
-    aktivitasKegiatan: 'Mendistribusikan laporan analisis',
-    tipeSimbol: 'KOTAK',
-    aktorId: 4,
-    mutuBaku: {
-      persyaratanKelengkapan: 'Laporan final, daftar distribusi',
-      waktu: '1 hari',
-      output: 'Laporan terdistribusi',
-      keterangan: 'Lanjut ke SOP-037/17000/2025 untuk publikasi'
-    }
-  },
-  {
-    id: 10,
-    noKegiatan: 10,
-    aktivitasKegiatan: 'Selesai',
-    tipeSimbol: 'KAPSUL',
-    aktorId: 4,
-    mutuBaku: {
-      persyaratanKelengkapan: '-',
-      waktu: '-',
-      output: 'Proses selesai',
-      keterangan: 'Dokumentasi dan arsip'
-    }
+onMounted(async () => {
+  const sopId = route.params.id
+  try {
+    const response = await sopService.getSOPById(sopId)
+    console.log('SOP Detail Response:', response)
+    sopData.value = response.data?.data || response.data
+    // If backend provides aktors and flowchartData, assign here:
+    if (sopData.value.involvedActors) aktors.value = sopData.value.involvedActors
+    if (sopData.value.tabularSteps) flowchartData.value = sopData.value.tabularSteps
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Gagal memuat detail SOP',
+      detail: error.message || 'Terjadi kesalahan saat mengambil data SOP',
+      life: 4000
+    })
   }
-])
+})
 
 // UI State
 const viewMode = ref('flowchart') // 'bpmn', 'flowchart', 'table'
@@ -870,11 +682,6 @@ const approveSOP = () => {
   alert('Fitur approval akan segera tersedia')
 }
 
-onMounted(() => {
-  // TODO: Fetch SOP data from API
-  const sopId = route.params.id
-  console.log('Loading SOP:', sopId)
-})
 </script>
 
 <style scoped>

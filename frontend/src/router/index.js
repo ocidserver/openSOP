@@ -23,7 +23,7 @@ const routes = [
         path: 'sop/create',
         name: 'SOPCreate',
         component: () => import('@/views/SOP/SOPCreate.vue'),
-        meta: { title: 'Buat SOP Baru', roles: ['ADMIN', 'MANAGER'] }
+        meta: { title: 'Buat SOP Baru', roles: ['ADMIN', 'SUPERVISOR', 'MANAGER'] }
       },
       {
         path: 'sop/:id',

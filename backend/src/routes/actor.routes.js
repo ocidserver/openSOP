@@ -38,11 +38,10 @@ router.get('/:id',
 /**
  * @route   POST /api/actors
  * @desc    Create new actor
- * @access  Private (ADMIN, SUPERVISOR only)
+ * @access  Private (All authenticated users can create actors for their SOPs)
  * @body    code, name, position, description, departmentId, email, phone, isActive
  */
 router.post('/', 
-  authorize(['ADMIN', 'SUPERVISOR']), 
   actorController.createActor
 );
 

@@ -57,6 +57,7 @@ model User {
   comments          Comment[]
   evaluations       SOPEvaluation[]     @relation("EvaluatorUser")
   reports           Report[]
+  createdActors     Actor[]
 
   @@map("users")
 }
@@ -95,15 +96,18 @@ model Actor {
   name          String
   position      String?     // Jabatan
   description   String?     @db.Text
-  departmentId  String      @map("department_id")
-  department    Department  @relation(fields: [departmentId], references: [id])
+  departmentId  String?     @map("department_id")
+  department    Department? @relation(fields: [departmentId], references: [id])
   email         String?
   phone         String?
   isActive      Boolean     @default(true) @map("is_active")
+  createdById   String?     @map("created_by_id")
+  createdBy     User?       @relation(fields: [createdById], references: [id])
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
   
   @@index([departmentId])
+  @@index([createdById])
   @@map("actors")
 }
 
@@ -191,6 +195,18 @@ model SOPDocument {
   tags                String[]          @default([])
   keywords            String[]          @default([])
   references          String[]          @default([]) // Reference to other SOPs or regulations
+  involvedActorIds    String[]          @default([]) @map("involved_actor_ids") // Aktor yang terlibat
+  
+  // Mode Manual/Basic: Tabular Steps & Flowchart Data
+  tabularSteps        Json?             @map("tabular_steps") @db.JsonB // Array of step objects
+  flowchartData       Json?             @map("flowchart_data") @db.JsonB // Flowchart nodes & connections
+  
+  // Field Tambahan (Informasi Dasar SOP)
+  legalBasis          String?           @map("legal_basis") @db.Text // Dasar Hukum
+  executorQualification String?         @map("executor_qualification") @db.Text // Kualifikasi Pelaksana
+  equipment           String?           @db.Text // Peralatan/Perlengkapan
+  warnings            String?           @db.Text // Peringatan
+  recordKeeping       String?           @map("record_keeping") @db.Text // Pencatatan dan Pendataan
   
   // Tracking
   viewCount           Int               @default(0) @map("view_count")
@@ -236,6 +252,10 @@ model SOPVersion {
   bpmnXml           String?       @db.Text // BPMN diagram XML
   changeLog         String?       @db.Text // What changed in this version
   changeReason      String?       @db.Text // Why it changed
+  
+  // Mode Manual/Basic: Version-specific Tabular Steps & Flowchart
+  tabularSteps      Json?         @map("tabular_steps") @db.JsonB // Array of step objects for this version
+  flowchartData     Json?         @map("flowchart_data") @db.JsonB // Flowchart nodes & connections for this version
   
   // Files
   documentPath      String?       @map("document_path") // Path to generated PDF/DOCX

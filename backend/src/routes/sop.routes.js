@@ -5,6 +5,7 @@ const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
 const { validate, validateQuery, validateParams, schemas } = require('../middleware/validator');
 const { asyncHandler } = require('../middleware/errorHandler');
 const Joi = require('joi');
+const sopManualController = require('../controllers/sopManual.controller');
 
 const prisma = new PrismaClient();
 
@@ -17,7 +18,7 @@ router.get('/',
   optionalAuth,
   validateQuery(schemas.pagination.keys({
     search: Joi.string(),
-    status: Joi.string().valid('DRAFT', 'IN_REVIEW', 'IN_APPROVAL', 'APPROVED', 'REJECTED', 'REVISION', 'ARCHIVED', 'OBSOLETE'),
+    status: Joi.string().valid('DRAFT', 'REVIEW', 'APPROVED', 'ACTIVE', 'REJECTED', 'REVISION', 'ARCHIVED', 'OBSOLETE'),
     departmentId: Joi.string().uuid(),
     complexity: Joi.string().valid('SIMPLE', 'MODERATE', 'COMPLEX'),
     categoryId: Joi.string().uuid(),
@@ -29,9 +30,9 @@ router.get('/',
     // Build where clause
     const where = {};
     
-    // Non-authenticated users or regular users only see APPROVED SOPs
+    // Non-authenticated users or regular users only see ACTIVE SOPs
     if (!req.user || req.user.role === 'USER') {
-      where.status = 'APPROVED';
+      where.status = 'ACTIVE';
     } else if (status) {
       where.status = status;
     }
@@ -97,12 +98,14 @@ router.get('/',
 
     res.json({
       success: true,
-      data: sops,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+      data: {
+        sops: sops,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
       }
     });
   })
@@ -110,10 +113,20 @@ router.get('/',
 
 /**
  * @route   GET /api/sop/:id
- * @desc    Get SOP by ID
+ * @desc    Get SOP by ID (supports Mode Manual/Basic with tabular steps)
  * @access  Public (for approved) / Private (for others)
  */
 router.get('/:id',
+  optionalAuth,
+  sopManualController.getSOPById
+);
+
+/**
+ * @route   GET /api/sop/:id/legacy
+ * @desc    Get SOP by ID (legacy method)
+ * @access  Public (for approved) / Private (for others)
+ */
+router.get('/:id/legacy',
   optionalAuth,
   validateParams(Joi.object({ id: schemas.uuid.required() })),
   asyncHandler(async (req, res) => {
@@ -229,10 +242,21 @@ router.get('/:id',
 
 /**
  * @route   POST /api/sop
- * @desc    Create new SOP
- * @access  Private (Manager, Admin)
+ * @desc    Create new SOP with Mode Manual/Basic support
+ * @access  Private (Supervisor, Manager, Admin)
  */
 router.post('/',
+  authenticate,
+  authorize('ADMIN', 'SUPERVISOR', 'MANAGER'),
+  sopManualController.createSOP
+);
+
+/**
+ * @route   POST /api/sop/legacy
+ * @desc    Create new SOP (legacy method without tabular steps)
+ * @access  Private (Manager, Admin)
+ */
+router.post('/legacy',
   authenticate,
   authorize('ADMIN', 'MANAGER'),
   validate(schemas.createSOP),
@@ -333,10 +357,21 @@ router.post('/',
 
 /**
  * @route   PUT /api/sop/:id
- * @desc    Update SOP
- * @access  Private (Manager, Admin, or Creator)
+ * @desc    Update SOP (supports Mode Manual/Basic with tabular steps)
+ * @access  Private (Manager, Admin, Supervisor, or Creator)
  */
 router.put('/:id',
+  authenticate,
+  authorize('ADMIN', 'SUPERVISOR', 'MANAGER'),
+  sopManualController.updateSOP
+);
+
+/**
+ * @route   PUT /api/sop/:id/legacy
+ * @desc    Update SOP (legacy method without tabular steps)
+ * @access  Private (Manager, Admin, or Creator)
+ */
+router.put('/:id/legacy',
   authenticate,
   authorize('ADMIN', 'MANAGER'),
   validateParams(Joi.object({ id: schemas.uuid.required() })),
