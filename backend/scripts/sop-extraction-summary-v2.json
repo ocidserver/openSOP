@@ -1,0 +1,30 @@
+{
+  "totalSOPs": 348,
+  "statusCounts": {
+    "ACTIVE": 348
+  },
+  "complexityCounts": {
+    "SIMPLE": 2,
+    "MODERATE": 346
+  },
+  "categoryCounts": {
+    "Teknologi Informasi": 73,
+    "Umum": 31,
+    "Administrasi Umum": 18,
+    "Statistik & Survei": 167,
+    "SDM": 3,
+    "Kearsipan": 1,
+    "Monitoring & Evaluasi": 2,
+    "Pengadaan Barang/Jasa": 52,
+    "Manajemen Persediaan": 1
+  },
+  "departmentCounts": {
+    "IPDS (Integrasi Pengolahan dan Diseminasi Data)": 348
+  },
+  "qualityScoreStats": {
+    "min": 54.54545454545454,
+    "max": 100,
+    "avg": 93.29735893416927
+  },
+  "withPdfFiles": 348
+}

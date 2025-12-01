@@ -40,6 +40,7 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/logs:/app/logs
+      - ./backend/static:/app/static
     ports:
       - "3000:3000"
     depends_on:

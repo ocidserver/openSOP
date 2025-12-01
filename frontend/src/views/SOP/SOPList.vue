@@ -65,19 +65,24 @@
         </div>
 
         <!-- DataTable -->
-        <DataTable 
-          :value="sops" 
+        <DataTable
+          :value="sops"
           :loading="loading"
-          :paginator="true" 
-          :rows="20"
+          :paginator="true"
+          :rows="pagination.rows"
           :rowsPerPageOptions="[10, 20, 50, 100]"
           :totalRecords="totalRecords"
+          :first="pagination.first"
+          :pageLinkSize="5"
           responsiveLayout="scroll"
           stripedRows
           class="mt-4"
           :rowHover="true"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Menampilkan {first} - {last} dari {totalRecords} SOP"
+          lazy
+          @page="onPageChange"
+          @rows="onRowsChange"
         >
           <template #empty>
             <div class="text-center py-4">
@@ -193,6 +198,13 @@ const sops = ref([]);
 const loading = ref(false);
 const totalRecords = ref(0);
 
+// Pagination state
+const pagination = ref({
+  first: 0,
+  rows: 10,
+  page: 1
+});
+
 const filters = ref({
   search: '',
   category: null,
@@ -235,19 +247,24 @@ const formatDate = (date) => {
 const loadSOPs = async () => {
   try {
     loading.value = true;
+
+    // Calculate page number from first record
+    const page = Math.floor(pagination.value.first / pagination.value.rows) + 1;
+
     const params = {
-      page: 1,
-      limit: 100,
+      page: page,
+      limit: pagination.value.rows,
       search: filters.value.search || undefined,
       category: filters.value.category?.id || undefined,
       status: filters.value.status || undefined
     };
 
+    console.log('Loading SOPs with params:', params);
     const response = await sopService.getSOPs(params);
-    
+
     if (response.success) {
       const sopData = response.data;
-      
+
       // Map backend data to frontend format
       sops.value = sopData.sops.map(sop => ({
         id: sop.id,
@@ -259,10 +276,14 @@ const loadSOPs = async () => {
         updatedAt: sop.updatedAt,
         department: sop.department?.name || '-'
       }));
-      
-      totalRecords.value = sopData.pagination?.total || sops.value.length;
-      
-      console.log('Loaded SOPs:', sops.value.length);
+
+      // Update total records from pagination info
+      totalRecords.value = sopData.pagination?.total || sopData.total || sops.value.length;
+
+      console.log(`Loaded ${sops.value.length} SOPs of ${totalRecords.value} total records`);
+      console.log('Page:', page, 'Limit:', pagination.value.rows);
+      console.log('Pagination info:', sopData.pagination);
+      console.log('Total Records set to:', totalRecords.value);
     }
   } catch (error) {
     console.error('Error loading SOPs:', error);
@@ -345,11 +366,43 @@ const deleteSOP = async (id) => {
 };
 
 const applyFilters = () => {
+  // Reset pagination to first page when filters change
+  pagination.value.first = 0;
+  pagination.value.page = 1;
+  pagination.value.rows = 10; // Reset to default 10
+  console.log('Applying filters, reset pagination:', pagination.value);
+  loadSOPs();
+};
+
+// Handle page change
+const onPageChange = (event) => {
+  console.log('Page change event:', event);
+  pagination.value.first = event.first;
+  pagination.value.rows = event.rows;
+  pagination.value.page = Math.floor(event.first / event.rows) + 1;
+  console.log('Updated pagination state:', pagination.value);
+  loadSOPs();
+};
+
+// Handle rows per page change
+const onRowsChange = (event) => {
+  console.log('Rows change event:', event);
+  pagination.value.rows = event.rows;
+  pagination.value.first = 0;
+  pagination.value.page = 1;
+  console.log('Updated pagination state:', pagination.value);
   loadSOPs();
 };
 
 // Watch for filter changes
-watch([() => filters.value.search], () => {
+watch([() => filters.value.search, () => filters.value.category, () => filters.value.status], () => {
+  // Reset pagination to first page when filters change
+  pagination.value.first = 0;
+  pagination.value.page = 1;
+  pagination.value.rows = 10; // Reset to default 10
+
+  console.log('Filters changed, reset pagination:', pagination.value);
+
   // Debounce search
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value);
@@ -478,6 +531,27 @@ onMounted(async () => {
 
 :deep(.p-datatable .p-datatable-tbody > tr:hover) {
   background-color: #f8f9fa;
+}
+
+/* Paginator custom styling */
+:deep(.p-paginator) {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 0 0 8px 8px;
+  padding: 0.75rem 1rem;
+}
+
+:deep(.p-paginator-content) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+:deep(.p-paginator-current) {
+  color: #6c757d;
+  font-size: 0.875rem;
 }
 
 /* Responsive */

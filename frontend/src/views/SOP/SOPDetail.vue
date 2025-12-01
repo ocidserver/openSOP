@@ -1,51 +1,19 @@
 <template>
   <div class="sop-detail">
-    <!-- Action Bar -->
     <div class="action-bar">
-      <Button 
-        icon="pi pi-arrow-left" 
-        label="Kembali" 
-        @click="goBack" 
-        class="p-button-text" 
-      />
+      <Button icon="pi pi-arrow-left" label="Kembali" @click="goBack" class="p-button-text" />
       <div class="action-buttons">
-        <!-- Tombol Approve dan Reject untuk Supervisor saat review -->
         <template v-if="isReviewMode && canApprove">
-          <Button 
-            icon="pi pi-times" 
-            label="Reject" 
-            @click="showRejectDialog" 
-            severity="danger"
-            outlined
-          />
-          <Button 
-            icon="pi pi-check" 
-            label="Approve" 
-            @click="showApproveDialog" 
-            severity="success"
-          />
+          <Button icon="pi pi-times" label="Reject" @click="showRejectDialog" severity="danger" outlined />
+          <Button icon="pi pi-check" label="Approve" @click="showApproveDialog" severity="success" />
         </template>
-        
-        <!-- Tombol normal untuk non-review -->
         <template v-else>
-          <Button 
-            icon="pi pi-file-pdf" 
-            label="Unduh PDF" 
-            @click="downloadPDF" 
-            class="p-button-outlined" 
-          />
-          <Button 
-            icon="pi pi-pencil" 
-            label="Edit" 
-            @click="editSOP" 
-            class="p-button-outlined" 
-            v-if="canEdit"
-          />
+          <Button icon="pi pi-file-pdf" label="Unduh PDF" @click="downloadPDF" class="p-button-outlined" />
+          <Button icon="pi pi-pencil" label="Edit" @click="editSOP" class="p-button-outlined" v-if="canEdit" />
         </template>
       </div>
     </div>
 
-    <!-- HEADER SECTION: Identitas SOP -->
     <Card class="metadata-card">
       <template #title>
         <div class="sop-header">
@@ -53,41 +21,34 @@
             <img src="@/assets/images/logo-opensop.png" alt="Logo BPS" />
           </div>
           <div class="sop-title-section">
-            <h1 class="sop-title">{{ sopData?.judul || '-' }}</h1>
-            <div class="sop-number">{{ sopData?.nomorSOP || '-' }}</div>
+            <h1 class="sop-title">{{ sopData?.title || '-' }}</h1>
+            <div class="sop-number">{{ sopData?.sopNumber || '-' }}</div>
           </div>
         </div>
       </template>
       <template #content>
-        <!-- Metadata Grid -->
         <div class="metadata-grid">
-          <!-- Kolom Kiri -->
           <div class="metadata-column">
             <div class="metadata-item">
-              <label>Tanggal Penetapan</label>
-              <div class="metadata-value">{{ sopData?.tanggalPenetapan ? formatDate(sopData.tanggalPenetapan) : '-' }}</div>
+              <label>Tanggal Dibuat</label>
+              <div class="metadata-value">{{ sopData?.createdAt ? formatDate(sopData.createdAt) : '-' }}</div>
             </div>
-            
             <div class="metadata-item">
               <label>Tanggal Berlaku</label>
-              <div class="metadata-value">{{ sopData?.tanggalBerlaku ? formatDate(sopData.tanggalBerlaku) : '-' }}</div>
+              <div class="metadata-value">{{ sopData?.effectiveDate ? formatDate(sopData.effectiveDate) : '-' }}</div>
             </div>
-            
             <div class="metadata-item">
               <label>Tanggal Revisi</label>
-              <div class="metadata-value">{{ sopData?.tanggalRevisi ? formatDate(sopData.tanggalRevisi) : 'N/A' }}</div>
+              <div class="metadata-value">{{ sopData?.updatedAt ? formatDate(sopData.updatedAt) : 'N/A' }}</div>
             </div>
-            
             <div class="metadata-item">
               <label>Status</label>
               <Tag :value="sopData?.status || '-'" :severity="getStatusSeverity(sopData?.status)" />
             </div>
-
             <div class="metadata-item">
               <label>Jenis SOP</label>
               <div class="metadata-value">{{ sopData?.jenisSOP || '-' }}</div>
             </div>
-
             <div class="metadata-item">
               <label>Klasifikasi</label>
               <div class="metadata-value">
@@ -95,33 +56,23 @@
               </div>
             </div>
           </div>
-
-          <!-- Kolom Kanan -->
           <div class="metadata-column">
             <div class="metadata-item">
               <label>Unit Kerja</label>
-              <div class="metadata-value">{{ sopData?.unitKerja || '-' }}</div>
+              <div class="metadata-value">{{ sopData?.department?.name || '-' }}</div>
             </div>
-
             <div class="metadata-item">
               <label>Disahkan Oleh</label>
-              <div class="metadata-value">{{ sopData?.pengesahanUser || '-' }}</div>
+              <div class="metadata-value">{{ sopData?.updatedBy?.fullName || '-' }}</div>
             </div>
-
             <div class="metadata-item">
               <label>Tanggal Pengesahan</label>
-              <div class="metadata-value">{{ sopData?.tanggalPengesahan ? formatDate(sopData.tanggalPengesahan) : 'Belum disahkan' }}</div>
+              <div class="metadata-value">{{ sopData?.updatedAt ? formatDate(sopData.updatedAt) : 'Belum disahkan' }}</div>
             </div>
-
             <div class="metadata-item" v-if="sopData?.keterkaitan && sopData?.keterkaitan.length > 0">
               <label>SOP Terkait</label>
               <div class="related-sop">
-                <router-link 
-                  v-for="related in sopData?.keterkaitan || []" 
-                  :key="related.id"
-                  :to="`/sop/${related.sopTerkaitId}`"
-                  class="related-link"
-                >
+                <router-link v-for="related in sopData?.keterkaitan || []" :key="related.id" :to="`/sop/${related.sopTerkaitId}`" class="related-link">
                   {{ related.nomorSOP }} ({{ related.tipeHubungan }})
                 </router-link>
               </div>
@@ -131,78 +82,46 @@
 
         <Divider />
 
-        <!-- Detail Information -->
         <Accordion :multiple="true" :activeIndex="[0, 1, 2]">
           <AccordionTab header="Dasar Hukum">
-            <div class="content-section" v-html="sopData?.dasarHukum || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.legalBasis || 'N/A'"></div>
           </AccordionTab>
-
           <AccordionTab header="Maksud dan Tujuan">
-            <div class="content-section" v-html="sopData?.maksudTujuan || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.purpose || 'N/A'"></div>
           </AccordionTab>
-
           <AccordionTab header="Kualifikasi Pelaksana">
-            <div class="content-section" v-html="sopData?.kualifikasiPelaksana || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.executorQualification || 'N/A'"></div>
           </AccordionTab>
-
           <AccordionTab header="Peralatan dan Perlengkapan">
-            <div class="content-section" v-html="sopData?.peralatanPerlengkapan || 'N/A'"></div>
+            <div class="content-section" v-html="sopData?.equipment || 'N/A'"></div>
           </AccordionTab>
-
-          <AccordionTab header="Peringatan" v-if="sopData?.peringatan">
-            <div class="content-section warning-box" v-html="sopData?.peringatan"></div>
+          <AccordionTab header="Peringatan" v-if="sopData?.warnings">
+            <div class="content-section warning-box" v-html="sopData?.warnings"></div>
           </AccordionTab>
-
-          <AccordionTab header="Catatan Pendataan" v-if="sopData?.catatanPendataan">
-            <div class="content-section" v-html="sopData?.catatanPendataan"></div>
+          <AccordionTab header="Catatan Pendataan" v-if="sopData?.recordKeeping">
+            <div class="content-section" v-html="sopData?.recordKeeping"></div>
           </AccordionTab>
         </Accordion>
       </template>
     </Card>
 
-    <!-- BODY SECTION: Flowchart Prosedur -->
     <Card class="flowchart-card">
       <template #title>
         <div class="flowchart-header">
           <h2>Prosedur Kerja</h2>
           <div class="flowchart-actions">
-            <Button 
-              icon="pi pi-pencil" 
-              label="Edit Flowchart" 
-              @click="openFlowchartEditor" 
-              class="p-button-outlined"
-              v-if="canEdit"
-            />
-            <SelectButton 
-              v-model="viewMode" 
-              :options="viewOptions" 
-              optionLabel="label"
-              optionValue="value"
-              aria-labelledby="view-mode-selector"
-              :unselectable="false"
-            />
+            <Button icon="pi pi-pencil" label="Edit Flowchart" @click="openFlowchartEditor" class="p-button-outlined" v-if="canEdit" />
+            <SelectButton v-model="viewMode" :options="viewOptions" optionLabel="label" optionValue="value" aria-labelledby="view-mode-selector" :unselectable="false" />
           </div>
         </div>
       </template>
       <template #content>
-        <!-- Flowchart SOP (Custom Swimlanes) -->
         <div v-show="viewMode === 'flowchart'" class="sop-flowchart-view">
-          <SOPFlowchart 
-            :flowchartData="flowchartData"
-            :aktors="aktors"
-          />
+          <SOPFlowchart :flowchartData="flowchartData" :actors="actors" />
         </div>
-
-        <!-- BPMN Diagram View -->
         <div v-show="viewMode === 'bpmn'" class="bpmn-view">
-          <BpmnViewer 
-            :flowchartData="flowchartData"
-            :aktors="aktors"
-            :xml="bpmnXML"
-          />
+          <BpmnViewer :flowchartData="flowchartData" :actors="actors" :xml="bpmnXML" />
         </div>
-
-        <!-- Table View (Original) -->
         <div v-show="viewMode === 'table'" class="flowchart-container">
           <div class="table-responsive">
             <table class="flowchart-table">
@@ -217,12 +136,8 @@
                   <th rowspan="2" class="col-keterangan">Keterangan</th>
                 </tr>
                 <tr>
-                  <th 
-                    v-for="aktor in aktors" 
-                    :key="aktor.id" 
-                    class="col-aktor"
-                  >
-                    {{ aktor.namaJabatan }}
+                  <th v-for="actor in actors" :key="actor.id" class="col-actor">
+                    {{ actor.namaJabatan }}
                   </th>
                 </tr>
               </thead>
@@ -231,17 +146,12 @@
                   <td class="text-center">{{ aktivitas.noKegiatan }}</td>
                   <td class="kegiatan-cell">
                     <div class="activity-content">
-                      <div 
-                        class="activity-symbol" 
-                        :class="`symbol-${aktivitas.tipeSimbol.toLowerCase()}`"
-                      >
+                      <div class="activity-symbol" :class="`symbol-${aktivitas.tipeSimbol.toLowerCase()}`">
                         <div class="symbol-content">
                           {{ getSymbolLabel(aktivitas.tipeSimbol) }}
                         </div>
                       </div>
                       <div class="activity-text">{{ aktivitas.aktivitasKegiatan }}</div>
-                      
-                      <!-- Decision Branch (if any) -->
                       <div v-if="aktivitas.tipeSimbol === 'BELAH_KETUPAT'" class="decision-branch">
                         <div class="branch-yes">
                           <i class="pi pi-arrow-right"></i> Ya: {{ aktivitas.nextActivityYes || 'Lanjut' }}
@@ -252,20 +162,11 @@
                       </div>
                     </div>
                   </td>
-                  
-                  <!-- Aktor Columns (Swimlanes) -->
-                  <td 
-                    v-for="aktor in aktors" 
-                    :key="aktor.id"
-                    class="aktor-cell"
-                    :class="{ 'active-aktor': aktivitas.aktorId === aktor.id }"
-                  >
-                    <div v-if="aktivitas.aktorId === aktor.id" class="process-box">
+                  <td v-for="actor in actors" :key="actor.id" class="actor-cell" :class="{ 'active-actor': aktivitas.actorId === actor.id }">
+                    <div v-if="aktivitas.actorId === actor.id" class="process-box">
                       <i class="pi pi-circle-fill"></i>
                     </div>
                   </td>
-
-                  <!-- Mutu Baku Columns -->
                   <td class="mutu-cell">
                     <div v-if="aktivitas.mutuBaku">
                       {{ aktivitas.mutuBaku.persyaratanKelengkapan || '-' }}
@@ -281,8 +182,6 @@
                       {{ aktivitas.mutuBaku.output || '-' }}
                     </div>
                   </td>
-
-                  <!-- Keterangan with Hyperlinks -->
                   <td class="keterangan-cell">
                     <div v-if="aktivitas.mutuBaku && aktivitas.mutuBaku.keterangan">
                       <span v-html="renderKeteranganWithLinks(aktivitas.mutuBaku.keterangan)"></span>
@@ -296,30 +195,11 @@
       </template>
     </Card>
 
-    <!-- Edit Flowchart Dialog -->
-    <Dialog 
-      v-model:visible="showFlowchartEditor" 
-      header="Edit Flowchart Prosedur" 
-      :modal="true"
-      :closable="true"
-      :style="{ width: '95vw', height: '90vh' }"
-      :contentStyle="{ height: 'calc(90vh - 120px)', padding: 0 }"
-    >
-      <BpmnEditor 
-        :flowchartData="flowchartData"
-        :xml="bpmnXML"
-        @save="saveFlowchart"
-        @cancel="showFlowchartEditor = false"
-      />
+    <Dialog v-model:visible="showFlowchartEditor" header="Edit Flowchart Prosedur" :modal="true" :style="{ width: '95vw', height: '90vh' }" :contentStyle="{ height: 'calc(90vh - 120px)', padding: 0 }">
+      <BpmnEditor :flowchartData="flowchartData" :xml="bpmnXML" @save="saveFlowchart" @cancel="showFlowchartEditor = false" />
     </Dialog>
 
-    <!-- Edit Metadata Dialog -->
-    <Dialog 
-      v-model:visible="showMetadataEditor" 
-      header="Edit Metadata SOP" 
-      :modal="true"
-      :style="{ width: '800px' }"
-    >
+    <Dialog v-model:visible="showMetadataEditor" header="Edit Metadata SOP" :modal="true" :style="{ width: '800px' }">
       <div class="metadata-form">
         <p>Form edit metadata akan segera tersedia...</p>
       </div>
@@ -329,13 +209,7 @@
       </template>
     </Dialog>
 
-    <!-- Approve Dialog -->
-    <Dialog 
-      v-model:visible="approveDialog" 
-      header="Approve SOP" 
-      :modal="true"
-      :style="{ width: '500px' }"
-    >
+    <Dialog v-model:visible="approveDialog" header="Approve SOP" :modal="true" :style="{ width: '500px' }">
       <div class="approval-content">
         <i class="pi pi-check-circle" style="font-size: 3rem; color: var(--green-500); display: block; text-align: center; margin-bottom: 1rem;"></i>
         <p style="text-align: center; font-size: 1.1rem; margin-bottom: 1rem;">
@@ -345,16 +219,9 @@
           SOP: <strong>{{ sopData.nomorSOP }}</strong><br/>
           {{ sopData.judul }}
         </p>
-        
         <div class="field mt-4">
           <label for="approveNotes">Catatan (Opsional)</label>
-          <Textarea 
-            id="approveNotes"
-            v-model="approvalNotes" 
-            rows="3" 
-            placeholder="Tambahkan catatan untuk approval ini..."
-            class="w-full"
-          />
+          <Textarea id="approveNotes" v-model="approvalNotes" rows="3" placeholder="Tambahkan catatan untuk approval ini..." class="w-full" />
         </div>
       </div>
       <template #footer>
@@ -363,13 +230,7 @@
       </template>
     </Dialog>
 
-    <!-- Reject Dialog -->
-    <Dialog 
-      v-model:visible="rejectDialog" 
-      header="Reject SOP" 
-      :modal="true"
-      :style="{ width: '500px' }"
-    >
+    <Dialog v-model:visible="rejectDialog" header="Reject SOP" :modal="true" :style="{ width: '500px' }">
       <div class="approval-content">
         <i class="pi pi-times-circle" style="font-size: 3rem; color: var(--red-500); display: block; text-align: center; margin-bottom: 1rem;"></i>
         <p style="text-align: center; font-size: 1.1rem; margin-bottom: 1rem;">
@@ -379,17 +240,9 @@
           SOP: <strong>{{ sopData.nomorSOP }}</strong><br/>
           {{ sopData.judul }}
         </p>
-        
         <div class="field mt-4">
           <label for="rejectNotes">Alasan Penolakan <span style="color: red;">*</span></label>
-          <Textarea 
-            id="rejectNotes"
-            v-model="rejectionNotes" 
-            rows="4" 
-            placeholder="Jelaskan alasan penolakan dan perbaikan yang diperlukan..."
-            class="w-full"
-            :class="{ 'p-invalid': showRejectError }"
-          />
+          <Textarea id="rejectNotes" v-model="rejectionNotes" rows="4" placeholder="Jelaskan alasan penolakan dan perbaikan yang diperlukan..." class="w-full" :class="{ 'p-invalid': showRejectError }" />
           <small v-if="showRejectError" class="p-error">Alasan penolakan wajib diisi</small>
         </div>
       </div>
@@ -420,11 +273,12 @@ import SOPFlowchart from '@/components/SOPFlowchart.vue'
 
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import sopService from '@/services/sopService'
+
 const router = useRouter()
 const authStore = useAuthStore()
 const route = useRoute()
 const sopData = ref(null)
-const aktors = ref([])
+const actors = ref([])
 
 const flowchartData = ref([])
 const toast = useToast()
@@ -433,28 +287,54 @@ onMounted(async () => {
   try {
     const response = await sopService.getSOPById(sopId)
     console.log('SOP Detail Response:', response)
-    sopData.value = response.data?.data || response.data
-    // If backend provides aktors and flowchartData, assign here:
-    if (sopData.value.involvedActors) aktors.value = sopData.value.involvedActors
-    if (sopData.value.tabularSteps) flowchartData.value = sopData.value.tabularSteps
+
+    // Handle response structure: { success: true, data: sop }
+    const data = response.data?.data || response.data
+    sopData.value = data
+
+    // Extract actors from different possible field names
+    if (data.involvedActors) {
+      actors.value = data.involvedActors
+    } else if (data.actors) {
+      actors.value = data.actors
+    } else if (data.department) {
+      // Create actors from department info
+      actors.value = [{
+        id: data.department.id,
+        namaJabatan: data.department.name,
+        name: data.department.name
+      }]
+    }
+
+    // Extract flowchart data from different possible field names
+    if (data.tabularSteps) {
+      flowchartData.value = data.tabularSteps
+    } else if (data.flowchartData) {
+      flowchartData.value = data.flowchartData
+    } else if (data.steps) {
+      flowchartData.value = data.steps
+    }
+
+    console.log('SOP Data:', sopData.value)
+    console.log('Actors:', actors.value)
+    console.log('Flowchart Data:', flowchartData.value)
   } catch (error) {
+    console.error('Error loading SOP details:', error)
     toast.add({
       severity: 'error',
       summary: 'Gagal memuat detail SOP',
-      detail: error.message || 'Terjadi kesalahan saat mengambil data SOP',
+      detail: error.response?.data?.message || error.message || 'Terjadi kesalahan saat mengambil data SOP',
       life: 4000
     })
   }
 })
 
-// UI State
-const viewMode = ref('flowchart') // 'bpmn', 'flowchart', 'table'
+const viewMode = ref('flowchart')
 const showFlowchartEditor = ref(false)
 const showMetadataEditor = ref(false)
 const bpmnXML = ref('')
 const bpmnViewerRef = ref(null)
 
-// Approval/Reject State
 const approveDialog = ref(false)
 const rejectDialog = ref(false)
 const approvalNotes = ref('')
@@ -463,25 +343,20 @@ const approving = ref(false)
 const rejecting = ref(false)
 const showRejectError = ref(false)
 
-// View Options
 const viewOptions = ref([
   { label: 'Flowchart SOP', value: 'flowchart', icon: 'pi pi-share-alt' },
   { label: 'BPMN', value: 'bpmn', icon: 'pi pi-sitemap' },
   { label: 'Tabel', value: 'table', icon: 'pi pi-table' }
 ])
 
-// Watch viewMode changes
 watch(viewMode, async (newValue) => {
   console.log('View mode changed to:', newValue)
-  
-  // If switching to BPMN view, wait for DOM update then trigger resize
   if (newValue === 'bpmn') {
     await nextTick()
     console.log('BPMN view now visible, waiting for initialization')
   }
 })
 
-// Computed
 const canEdit = computed(() => {
   const user = authStore.user
   return user && ['ADMIN', 'SUPERVISOR', 'PIMPINAN_TINGGI_PRATAMA', 'PIMPINAN_TINGGI_MADYA', 'PIMPINAN_TINGGI_UTAMA'].includes(user.role)
@@ -489,11 +364,13 @@ const canEdit = computed(() => {
 
 const canApprove = computed(() => {
   const user = authStore.user
-  // Supervisor can approve if status is REVIEW
   return user && sopData.value.status === 'REVIEW' && ['ADMIN', 'SUPERVISOR', 'PIMPINAN_TINGGI_PRATAMA', 'PIMPINAN_TINGGI_MADYA', 'PIMPINAN_TINGGI_UTAMA'].includes(user.role)
 })
 
-// Methods
+const isReviewMode = computed(() => {
+  return route.query.mode === 'review' || sopData.value?.status === 'REVIEW'
+})
+
 const goBack = () => {
   router.push('/sop')
 }
@@ -501,10 +378,10 @@ const goBack = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
-  return date.toLocaleDateString('id-ID', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   })
 }
 
@@ -531,7 +408,6 @@ const getSymbolLabel = (tipeSimbol) => {
   return labels[tipeSimbol] || tipeSimbol
 }
 
-// Approval Functions
 const showApproveDialog = () => {
   approveDialog.value = true
   approvalNotes.value = ''
@@ -551,32 +427,19 @@ const closeRejectDialog = () => {
 
 const confirmApprove = async () => {
   approving.value = true
-  
   try {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // TODO: Replace with actual API call
-    // await api.approveSOP(sopData.value.id, {
-    //   notes: approvalNotes.value
-    // })
-    
     toast.add({
       severity: 'success',
       summary: 'Berhasil',
       detail: 'SOP berhasil disetujui',
       life: 3000
     })
-    
-    // Update status
     sopData.value.status = 'ACTIVE'
     approveDialog.value = false
-    
-    // Redirect back to list after short delay
     setTimeout(() => {
       router.push('/sop')
     }, 1500)
-    
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -590,39 +453,24 @@ const confirmApprove = async () => {
 }
 
 const confirmReject = async () => {
-  // Validate rejection notes
   if (!rejectionNotes.value || rejectionNotes.value.trim() === '') {
     showRejectError.value = true
     return
   }
-  
   rejecting.value = true
-  
   try {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // TODO: Replace with actual API call
-    // await api.rejectSOP(sopData.value.id, {
-    //   reason: rejectionNotes.value
-    // })
-    
     toast.add({
       severity: 'warn',
       summary: 'SOP Ditolak',
       detail: 'SOP telah ditolak dan dikembalikan ke pembuat',
       life: 3000
     })
-    
-    // Update status
     sopData.value.status = 'DRAFT'
     rejectDialog.value = false
-    
-    // Redirect back to list after short delay
     setTimeout(() => {
       router.push('/sop')
     }, 1500)
-    
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -634,26 +482,97 @@ const confirmReject = async () => {
     rejecting.value = false
   }
 }
+
 const renderKeteranganWithLinks = (keterangan) => {
   if (!keterangan) return ''
-  
-  // Regex to find SOP numbers (SOP-XXX/XXXXX/XXXX format)
   const sopPattern = /SOP-(\d{3})\/(\d{5})\/(\d{4})/g
-  
   return keterangan.replace(sopPattern, (match) => {
     const sopId = match.replace(/\//g, '-')
     return `<a href="/sop/${sopId}" class="sop-link">${match}</a>`
   })
 }
 
-const downloadPDF = () => {
-  // TODO: Implement PDF download
-  console.log('Download PDF:', sopData.value.nomorSOP)
-  alert('Fitur download PDF akan segera tersedia')
+const downloadPDF = async () => {
+  try {
+    if (!sopData.value?.id) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'SOP data not found',
+        life: 3000
+      });
+      return;
+    }
+
+    // Show loading toast
+    toast.add({
+      severity: 'info',
+      summary: 'Mengunduh PDF',
+      detail: 'Sedang menyiapkan PDF...',
+      life: 2000
+    });
+
+    console.log('Downloading PDF for SOP:', sopData.value.sopNumber);
+
+    // Use sopService with authentication
+    const response = await sopService.downloadSOPPDF(sopData.value.id);
+
+    // Create blob URL from response
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sopData.value.sopNumber || sopData.value.title}.pdf`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+
+    // Trigger download
+    link.click();
+
+    // Clean up
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    // Success toast
+    setTimeout(() => {
+      toast.add({
+        severity: 'success',
+        summary: 'Berhasil',
+        detail: `PDF ${sopData.value.sopNumber || sopData.value.title} berhasil diunduh`,
+        life: 3000
+      });
+    }, 1000);
+
+  } catch (error) {
+    console.error('Download PDF error:', error);
+
+    // Handle different error types
+    let errorMessage = 'Gagal mengunduh PDF. Silakan coba lagi.';
+
+    if (error.response) {
+      if (error.response.status === 401) {
+        errorMessage = 'Anda tidak memiliki akses untuk mengunduh PDF ini.';
+      } else if (error.response.status === 404) {
+        errorMessage = 'File PDF tidak ditemukan.';
+      } else if (error.response.status === 403) {
+        errorMessage = 'Anda tidak memiliki izin untuk mengunduh PDF ini.';
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: errorMessage,
+      life: 3000
+    });
+  }
 }
 
 const editSOP = () => {
-  // Show dialog to choose edit type
   showMetadataEditor.value = true
 }
 
@@ -664,8 +583,6 @@ const openFlowchartEditor = () => {
 const saveFlowchart = (data) => {
   console.log('Save flowchart:', data)
   bpmnXML.value = data.xml
-  // TODO: Update flowchartData from parsed XML
-  // flowchartData.value = data.flowchartData
   showFlowchartEditor.value = false
   alert('Flowchart berhasil disimpan!')
 }
@@ -677,11 +594,9 @@ const saveMetadata = () => {
 }
 
 const approveSOP = () => {
-  // TODO: Implement approval workflow
   console.log('Approve SOP:', sopData.value.nomorSOP)
   alert('Fitur approval akan segera tersedia')
 }
-
 </script>
 
 <style scoped>
@@ -691,7 +606,6 @@ const approveSOP = () => {
   margin: 0 auto;
 }
 
-/* Action Bar */
 .action-bar {
   display: flex;
   justify-content: space-between;
@@ -708,7 +622,6 @@ const approveSOP = () => {
   gap: 0.5rem;
 }
 
-/* SOP Header */
 .sop-header {
   display: flex;
   align-items: center;
@@ -737,7 +650,6 @@ const approveSOP = () => {
   color: var(--text-color-secondary);
 }
 
-/* Metadata Grid */
 .metadata-card {
   margin-bottom: 2rem;
 }
@@ -808,7 +720,6 @@ const approveSOP = () => {
   border-radius: 4px;
 }
 
-/* Flowchart Card */
 .flowchart-card {
   margin-bottom: 2rem;
 }
@@ -885,7 +796,7 @@ const approveSOP = () => {
   width: 25%;
 }
 
-.col-aktor {
+.col-actor {
   width: 120px;
   min-width: 100px;
 }
@@ -908,7 +819,6 @@ const approveSOP = () => {
   text-align: center;
 }
 
-/* Activity Cell */
 .kegiatan-cell {
   position: relative;
 }
@@ -991,14 +901,13 @@ const approveSOP = () => {
   color: var(--red-700);
 }
 
-/* Aktor Cell (Swimlane) */
-.aktor-cell {
+.actor-cell {
   text-align: center;
   background: var(--surface-50);
   position: relative;
 }
 
-.aktor-cell.active-aktor {
+.actor-cell.active-actor {
   background: var(--primary-50);
 }
 
@@ -1015,7 +924,6 @@ const approveSOP = () => {
   font-size: 1rem;
 }
 
-/* Mutu Baku Cells */
 .mutu-cell {
   font-size: 0.875rem;
   line-height: 1.4;
@@ -1038,7 +946,6 @@ const approveSOP = () => {
   border-bottom-style: solid;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .sop-detail {
     padding: 0.5rem;
@@ -1085,7 +992,6 @@ const approveSOP = () => {
   }
 }
 
-/* Dark Mode Support */
 :deep(.p-accordion .p-accordion-header-link) {
   background: var(--surface-card);
 }
@@ -1094,7 +1000,6 @@ const approveSOP = () => {
   background: var(--surface-card);
 }
 
-/* Dialog Styles */
 .metadata-form {
   padding: 1.5rem;
   min-height: 200px;

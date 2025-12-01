@@ -517,4 +517,104 @@ router.post('/:id/comment',
   })
 );
 
+/**
+ * @route   GET /api/sop/:id/download
+ * @desc    Download SOP as PDF
+ * @access  Public for approved, Private for others
+ */
+router.get('/:id/download',
+  authenticate,
+  validateParams(Joi.object({ id: schemas.uuid.required() })),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // Get SOP with attachments
+      const sop = await prisma.sOPDocument.findUnique({
+        where: { id },
+        include: {
+          department: true,
+          attachments: {
+            where: { fileType: 'PDF' },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
+        }
+      });
+
+      if (!sop) {
+        return res.status(404).json({
+          success: false,
+          message: 'SOP not found'
+        });
+      }
+
+      // Check permissions - only approved SOPs or own SOPs can be downloaded
+      if (sop.status !== 'APPROVED' && (!req.user || (req.user.role !== 'ADMIN' && sop.createdById !== req.user.id))) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to download this SOP'
+        });
+      }
+
+      // Check if PDF attachment exists
+      const pdfAttachment = sop.attachments?.find(att => att.fileType === 'PDF');
+
+      if (!pdfAttachment) {
+        return res.status(404).json({
+          success: false,
+          message: 'File PDF tidak tersedia untuk SOP ini. SOP ini mungkin belum memiliki attachment PDF.',
+          data: {
+            sopId: id,
+            sopNumber: sop.sopNumber,
+            hasAttachments: sop.attachments?.length || 0,
+            attachments: sop.attachments?.map(att => ({
+              type: att.fileType,
+              fileName: att.fileName
+            })) || []
+          }
+        });
+      }
+
+      // Increment download count
+      await prisma.sOPDocument.update({
+        where: { id },
+        data: { downloadCount: { increment: 1 } }
+      });
+
+      // Get file path
+      const filePath = pdfAttachment.filePath;
+
+      // Set headers for download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${sop.sopNumber}.pdf"`);
+
+      // Send file
+      res.download(filePath, `${sop.sopNumber}.pdf`);
+
+      // Create audit log
+      await prisma.auditLog.create({
+        data: {
+          action: 'DOWNLOAD',
+          entityType: 'SOPDocument',
+          entityId: id,
+          sopId: id,
+          userId: req.user?.id,
+          description: `Downloaded PDF: ${sop.sopNumber} - ${sop.title}`,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent')
+        }
+      });
+
+    } catch (error) {
+      console.error('PDF Download Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to download PDF',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+  })
+);
+
 module.exports = router;

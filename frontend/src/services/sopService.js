@@ -149,12 +149,19 @@ export default {
   getDashboardStats() {
     return api.get('/reports/dashboard')
   },
-  
+
   getInventoryReport() {
     return api.get('/reports/inventory')
   },
-  
+
   getComplianceReport(params) {
     return api.get('/reports/compliance', { params })
+  },
+
+  // PDF Download
+  downloadSOPPDF(id) {
+    return api.get(`/sop/${id}/download`, {
+      responseType: 'blob' // Important for file download
+    })
   }
 }

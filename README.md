@@ -20,11 +20,11 @@
 
 ## 🎯 Deskripsi Proyek
 
-openSOP adalah sistem manajemen SOP berbasis web yang dirancang khusus untuk BPS IPDS OCID. Sistem ini mengelola 311+ SOP real dari dokumen PDF yang telah diekstrak dan terstruktur dalam database. Mendukung siklus hidup lengkap dari perancangan hingga monitoring implementasi SOP.
+openSOP adalah sistem manajemen SOP berbasis web yang dirancang khusus untuk BPS IPDS OCID. Sistem ini mengelola 348 SOP real dari dokumen PDF yang telah diekstrak dan terstruktur dalam database. Mendukung siklus hidup lengkap dari perancangan hingga monitoring implementasi SOP.
 
 ### ✨ Fitur Utama
 
-- **📚 311+ Real SOP Data** - Data SOP real hasil ekstraksi dari PDF (214 ACTIVE, 97 DRAFT)
+- **📚 348 Real SOP Data** - Data SOP real hasil ekstraksi dari PDF (348 ACTIVE)
 - **🔍 Smart Search & Filter** - Pencarian cepat dengan filter kategori dan status
 - **📊 Dashboard Monitoring** - Monitoring implementasi dan kepatuhan SOP
 - **👥 Role-Based Access** - 7 level akses (Admin, Pimpinan, Supervisor, Staff, dll)
@@ -193,8 +193,8 @@ npx prisma migrate dev
 # Seed data awal (departments, categories, users)
 npx prisma db seed
 
-# Import 311 real SOPs dari SQLite (PENTING!)
-node prisma/seed-real-sop.js
+# Import 348 real SOPs dari SQLite (PENTING!)
+node prisma/seed-real-sop-v2.js
 
 # Jalankan backend server
 npm start
@@ -238,11 +238,10 @@ Password: user123
 
 ## 📊 Data SOP Real
 
-Sistem ini sudah terisi dengan **311 SOP real** yang diekstrak dari dokumen PDF:
+Sistem ini sudah terisi dengan **348 SOP real** yang diekstrak dari dokumen PDF:
 
-- **214 SOP ACTIVE** - SOP yang sudah tervalidasi dan aktif
-- **97 SOP DRAFT** - SOP yang masih dalam tahap draft
-- **Kategori:** Statistik (151), Administrasi (144), Pengadaan (10), Penatausahaan (5), dll
+- **348 SOP ACTIVE** - SOP yang sudah tervalidasi dan aktif
+- **Kategori:** Statistik (167), Pengadaan Barang/Jasa (52), Teknologi Informasi (73), Administrasi Umum (18), dll
 - **Department:** IPDS dan unit terkait
 
 ### Ekstraksi Ulang Data SOP (jika diperlukan)
@@ -647,8 +646,8 @@ const sops = await prisma.sop.findMany({
 
 ### Current System Stats
 
-- **Total SOPs:** 311 (214 ACTIVE, 97 DRAFT)
-- **Categories:** 6 main categories
+- **Total SOPs:** 348 (348 ACTIVE)
+- **Categories:** 9 main categories
 - **Departments:** IPDS + sub-units
 - **Users:** Multiple roles (Admin, Pimpinan, Staff, etc.)
 - **API Endpoints:** 30+ endpoints
@@ -699,4 +698,4 @@ All rights reserved © 2025 BPS.
 
 _Version 1.0.1 - November 2025_
 
-📊 **System Status:** ✅ Production Ready | 311 Real SOPs | Active Development
+📊 **System Status:** ✅ Production Ready | 348 Real SOPs | Active Development
